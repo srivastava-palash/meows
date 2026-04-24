@@ -1,0 +1,97 @@
+<h2>Cat Detail Page</h2>
+<p class="subtitle">What you see when you tap a cat pin — photo, story, and community comments</p>
+
+<div style="max-width:420px;margin:0 auto;background:white;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,0.1);overflow:hidden;font-family:sans-serif;">
+
+  <!-- Nav -->
+  <div style="background:#ff6b35;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+    <span style="color:white;font-size:16px;cursor:pointer;">←</span>
+    <span style="color:white;font-weight:800;font-size:13px;">🐾 Meows of Mumbai</span>
+  </div>
+
+  <!-- Cat photo -->
+  <div style="background:#ffd6b3;height:220px;display:flex;align-items:center;justify-content:center;font-size:80px;position:relative;">
+    🐱
+    <div style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.5);color:white;font-size:10px;padding:4px 8px;border-radius:12px;">📍 Bandra West</div>
+  </div>
+
+  <div style="padding:16px;">
+
+    <!-- Cat name + meta -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+      <div>
+        <div style="font-weight:800;font-size:20px;color:#1a1a1a;">Biscuit</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px;">spotted 3 days ago · by anonymous</div>
+      </div>
+      <div style="background:#fff0e8;color:#ff6b35;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;">🐾 Bandra local</div>
+    </div>
+
+    <!-- Mini map -->
+    <div style="position:relative;background:#e8ead8;border-radius:10px;height:80px;overflow:hidden;margin-bottom:12px;">
+      <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#e8ead8"/>
+        <line x1="0" y1="40" x2="420" y2="40" stroke="#fff" stroke-width="6" opacity="0.7"/>
+        <line x1="0" y1="62" x2="420" y2="62" stroke="#fff" stroke-width="3" opacity="0.5"/>
+        <line x1="100" y1="0" x2="100" y2="90" stroke="#fff" stroke-width="5" opacity="0.6"/>
+        <line x1="260" y1="0" x2="260" y2="90" stroke="#fff" stroke-width="4" opacity="0.5"/>
+        <rect x="108" y="6" width="144" height="28" rx="3" fill="#d4d8c4" opacity="0.8"/>
+        <circle cx="200" cy="40" r="6" fill="#ff6b35"/>
+        <circle cx="200" cy="40" r="12" fill="#ff6b35" opacity="0.2"/>
+      </svg>
+      <div style="position:absolute;bottom:5px;right:8px;font-size:9px;color:#888;">Hill Road, Bandra West</div>
+    </div>
+
+    <!-- Story -->
+    <div style="font-size:13px;color:#444;line-height:1.6;margin-bottom:16px;padding:12px;background:#fff8f5;border-radius:10px;border-left:3px solid #ff6b35;">
+      "Always sits outside the Oven Fresh bakery on Hill Road. Super friendly, will headbutt your hand if you stop. The bakery uncle calls him Biscuit and feeds him every morning."
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top:1px solid #f0f0f0;margin-bottom:14px;"></div>
+
+    <!-- Comments section -->
+    <div style="font-weight:700;font-size:14px;color:#1a1a1a;margin-bottom:12px;">💬 Community (4 comments)</div>
+
+    <!-- Comment 1 -->
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#ffd6b3;display:flex;align-items:center;justify-content:center;font-size:11px;">🐾</div>
+        <span style="font-size:11px;font-weight:600;color:#555;">PriyaMumbai</span>
+        <span style="font-size:10px;color:#bbb;">· 2 days ago</span>
+      </div>
+      <div style="font-size:12px;color:#444;line-height:1.5;padding-left:28px;">I see Biscuit every week! He also hangs out near the D-Mart around 6pm 🥰</div>
+      <div style="padding-left:28px;margin-top:4px;font-size:10px;color:#ff6b35;cursor:pointer;">↩ Reply</div>
+
+      <!-- Nested reply -->
+      <div style="margin-left:28px;margin-top:8px;border-left:2px solid #ffe0cc;padding-left:10px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <div style="width:18px;height:18px;border-radius:50%;background:#b3e5fc;display:flex;align-items:center;justify-content:center;font-size:9px;">🐱</div>
+          <span style="font-size:10px;font-weight:600;color:#555;">anonymous</span>
+          <span style="font-size:9px;color:#bbb;">· 1 day ago</span>
+        </div>
+        <div style="font-size:11px;color:#444;line-height:1.5;">Yes!! That's definitely him, he walks the whole street!</div>
+        <div style="margin-top:3px;font-size:10px;color:#ff6b35;cursor:pointer;">↩ Reply</div>
+      </div>
+    </div>
+
+    <!-- Comment 2 -->
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:#c8e6c9;display:flex;align-items:center;justify-content:center;font-size:11px;">😸</div>
+        <span style="font-size:11px;font-weight:600;color:#555;">RahulBandra</span>
+        <span style="font-size:10px;color:#bbb;">· 1 day ago</span>
+      </div>
+      <div style="font-size:12px;color:#444;line-height:1.5;padding-left:28px;">Anyone know if he's been neutered? There's a free spay/neuter camp in Andheri next week</div>
+      <div style="padding-left:28px;margin-top:4px;font-size:10px;color:#ff6b35;cursor:pointer;">↩ Reply</div>
+    </div>
+
+    <!-- Add comment box -->
+    <div style="border-top:1px solid #f0f0f0;padding-top:12px;">
+      <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:6px;">Add a comment</div>
+      <input style="width:100%;border:1.5px solid #ffe0cc;border-radius:8px;padding:8px 10px;font-size:12px;color:#333;background:#fffaf8;box-sizing:border-box;margin-bottom:6px;" placeholder="Your name (optional)" />
+      <textarea style="width:100%;border:1.5px solid #ffe0cc;border-radius:8px;padding:8px 10px;font-size:12px;color:#333;background:#fffaf8;box-sizing:border-box;height:60px;resize:none;" placeholder="Share what you know about this cat..."></textarea>
+      <div style="background:#ff6b35;color:white;text-align:center;padding:9px;border-radius:8px;font-weight:700;font-size:12px;margin-top:6px;cursor:pointer;">Post comment</div>
+    </div>
+
+  </div>
+</div>
