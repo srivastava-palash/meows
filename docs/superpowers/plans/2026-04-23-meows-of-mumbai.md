@@ -62,7 +62,13 @@
 - Create: `jest.config.ts`
 - Create: `jest.setup.ts`
 
-- [ ] **Step 1: Scaffold the project**
+- [x] **Step 1: Scaffold the project**
+
+```bash
+# Scaffolded to /tmp/meows-scaffold (existing files blocked in-place scaffold) then rsync'd over
+npx create-next-app@14 /tmp/meows-scaffold --typescript --tailwind --eslint --app --no-src-dir --import-alias "@/*" --yes
+rsync -a --exclude='.git' --exclude='AGENTS.md' --exclude='CLAUDE.md' --exclude='.superpowers' --exclude='docs' /tmp/meows-scaffold/ .
+```
 
 ```bash
 npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias "@/*"
@@ -70,14 +76,16 @@ npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir
 
 Expected: Next.js project created in current directory.
 
-- [ ] **Step 2: Install dependencies**
+- [x] **Step 2: Install dependencies**
 
 ```bash
 npm install @supabase/supabase-js iron-session bcryptjs sharp leaflet leaflet.markercluster
 npm install -D @types/bcryptjs @types/leaflet @types/leaflet.markercluster jest jest-environment-node ts-jest @types/jest
 ```
 
-- [ ] **Step 3: Configure Jest**
+- [x] **Step 3: Configure Jest**
+
+> Also installed `ts-node` (required by Jest for .ts config files) and added `types/leaflet-css.d.ts` for Leaflet CSS import type declarations.
 
 Create `jest.config.ts`:
 ```typescript
@@ -93,7 +101,7 @@ const config: Config = {
 export default config
 ```
 
-- [ ] **Step 4: Create `.env.local`**
+- [x] **Step 4: Create `.env.local`**
 
 ```bash
 cat > .env.local << 'EOF'
@@ -107,7 +115,7 @@ EOF
 
 > Fill in real values from your Supabase project dashboard (Settings → API).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -121,7 +129,7 @@ git commit -m "feat: bootstrap Next.js project with dependencies"
 **Files:**
 - Create: `types/index.ts`
 
-- [ ] **Step 1: Create `types/index.ts`**
+- [x] **Step 1: Create `types/index.ts`**
 
 ```typescript
 export interface CatPin {
@@ -186,7 +194,7 @@ export interface UploadResult {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add types/index.ts
@@ -200,7 +208,7 @@ git commit -m "feat: add shared TypeScript types"
 **Files:**
 - Create: `supabase/migrations/001_initial.sql`
 
-- [ ] **Step 1: Create migration file**
+- [x] **Step 1: Create migration file**
 
 Create `supabase/migrations/001_initial.sql`:
 ```sql
@@ -270,7 +278,7 @@ CREATE TRIGGER comments_updated_at BEFORE UPDATE ON comments
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 ```
 
-- [ ] **Step 2: Apply migration in Supabase**
+- [x] **Step 2: Apply migration in Supabase**
 
 In Supabase dashboard → SQL Editor, paste and run the migration. Verify:
 
@@ -282,13 +290,13 @@ SELECT indexname FROM pg_indexes WHERE tablename = 'cats';
 -- Expected: cats_pkey, cats_location_idx, cats_hidden_approved_idx
 ```
 
-- [ ] **Step 3: Create Supabase Storage bucket**
+- [x] **Step 3: Create Supabase Storage bucket**
 
 In Supabase dashboard → Storage → New bucket:
 - Name: `cat-photos`
 - Public: ✓ (photos are public)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/
@@ -303,7 +311,7 @@ git commit -m "feat: add database schema with PostGIS and storage bucket"
 - Create: `lib/geo.ts`
 - Create: `__tests__/lib/geo.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `__tests__/lib/geo.test.ts`:
 ```typescript
@@ -351,7 +359,7 @@ describe('validateBbox', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests — expect failure**
+- [x] **Step 2: Run tests — expect failure**
 
 ```bash
 npx jest __tests__/lib/geo.test.ts
@@ -359,7 +367,7 @@ npx jest __tests__/lib/geo.test.ts
 
 Expected: `Cannot find module '@/lib/geo'`
 
-- [ ] **Step 3: Implement `lib/geo.ts`**
+- [x] **Step 3: Implement `lib/geo.ts`**
 
 ```typescript
 import type { BoundingBox } from '@/types'
@@ -384,7 +392,7 @@ export function validateBbox(
 }
 ```
 
-- [ ] **Step 4: Run tests — expect pass**
+- [x] **Step 4: Run tests — expect pass**
 
 ```bash
 npx jest __tests__/lib/geo.test.ts
@@ -392,7 +400,7 @@ npx jest __tests__/lib/geo.test.ts
 
 Expected: 9 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/geo.ts __tests__/lib/geo.test.ts
@@ -407,7 +415,7 @@ git commit -m "feat: add geo utilities with tests"
 - Create: `lib/db.ts`
 - Create: `lib/auth.ts`
 
-- [ ] **Step 1: Create `lib/db.ts`**
+- [x] **Step 1: Create `lib/db.ts`**
 
 ```typescript
 import { createClient } from '@supabase/supabase-js'
@@ -418,7 +426,7 @@ export const supabase = createClient(
 )
 ```
 
-- [ ] **Step 2: Create `lib/auth.ts`**
+- [x] **Step 2: Create `lib/auth.ts`**
 
 ```typescript
 import { getIronSession, IronSession } from 'iron-session'
@@ -448,7 +456,7 @@ export async function requireAuth(): Promise<SessionData> {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add lib/db.ts lib/auth.ts
@@ -464,7 +472,7 @@ git commit -m "feat: add Supabase client and iron-session auth helpers"
 - Create: `app/api/auth/login/route.ts`
 - Create: `app/api/auth/logout/route.ts`
 
-- [ ] **Step 1: Create `app/api/auth/signup/route.ts`**
+- [x] **Step 1: Create `app/api/auth/signup/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -512,7 +520,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Create `app/api/auth/login/route.ts`**
+- [x] **Step 2: Create `app/api/auth/login/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -551,7 +559,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 3: Create `app/api/auth/logout/route.ts`**
+- [x] **Step 3: Create `app/api/auth/logout/route.ts`**
 
 ```typescript
 import { NextResponse } from 'next/server'
@@ -564,7 +572,7 @@ export async function POST() {
 }
 ```
 
-- [ ] **Step 4: Smoke test signup manually**
+- [x] **Step 4: Smoke test signup manually**
 
 ```bash
 curl -s -X POST http://localhost:3000/api/auth/signup \
@@ -574,7 +582,7 @@ curl -s -X POST http://localhost:3000/api/auth/signup \
 
 Expected: `{"username":"testcat"}` with status 201.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/api/auth/
@@ -588,7 +596,7 @@ git commit -m "feat: add signup, login, logout API routes"
 **Files:**
 - Create: `app/api/upload/route.ts`
 
-- [ ] **Step 1: Create `app/api/upload/route.ts`**
+- [x] **Step 1: Create `app/api/upload/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -650,7 +658,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Smoke test with a real image**
+- [x] **Step 2: Smoke test with a real image**
 
 ```bash
 npx next dev &
@@ -660,7 +668,7 @@ curl -s -X POST http://localhost:3000/api/upload \
 
 Expected: JSON with `photo_url`, `thumbnail_url`, `photo_width`, `photo_height`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/api/upload/
@@ -675,7 +683,7 @@ git commit -m "feat: add image upload API with sharp thumbnail generation"
 - Create: `app/api/cats/route.ts`
 - Create: `__tests__/api/cats.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `__tests__/api/cats.test.ts`:
 ```typescript
@@ -698,7 +706,7 @@ describe('bbox validation used in GET /api/cats', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests — expect pass (uses geo.ts already written)**
+- [x] **Step 2: Run tests — expect pass (uses geo.ts already written)**
 
 ```bash
 npx jest __tests__/api/cats.test.ts
@@ -706,7 +714,7 @@ npx jest __tests__/api/cats.test.ts
 
 Expected: 3 tests pass.
 
-- [ ] **Step 3: Create `app/api/cats/route.ts`**
+- [x] **Step 3: Create `app/api/cats/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -785,7 +793,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: Add `cats_in_bbox` database function**
+- [x] **Step 4: Add `cats_in_bbox` database function**
 
 In Supabase SQL Editor:
 ```sql
@@ -806,7 +814,7 @@ LANGUAGE sql STABLE AS $$
 $$;
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/api/cats/route.ts __tests__/api/cats.test.ts
@@ -821,7 +829,7 @@ git commit -m "feat: add cats API — bounding box query and create"
 - Create: `app/api/cats/[id]/route.ts`
 - Create: `app/api/cats/[id]/report/route.ts`
 
-- [ ] **Step 1: Create `app/api/cats/[id]/route.ts`**
+- [x] **Step 1: Create `app/api/cats/[id]/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -847,7 +855,7 @@ export async function GET(
 }
 ```
 
-- [ ] **Step 2: Create `app/api/cats/[id]/report/route.ts`**
+- [x] **Step 2: Create `app/api/cats/[id]/report/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -884,7 +892,7 @@ export async function POST(
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/api/cats/
@@ -899,7 +907,7 @@ git commit -m "feat: add single cat GET and report POST routes"
 - Create: `app/api/comments/route.ts`
 - Create: `app/api/comments/[id]/report/route.ts`
 
-- [ ] **Step 1: Create `app/api/comments/route.ts`**
+- [x] **Step 1: Create `app/api/comments/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -938,7 +946,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Create `app/api/comments/[id]/report/route.ts`**
+- [x] **Step 2: Create `app/api/comments/[id]/report/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -974,7 +982,7 @@ export async function POST(
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/api/comments/
@@ -988,7 +996,7 @@ git commit -m "feat: add comments POST and report routes"
 **Files:**
 - Create: `middleware.ts`
 
-- [ ] **Step 1: Create `middleware.ts`**
+- [x] **Step 1: Create `middleware.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -1039,7 +1047,7 @@ export const config = {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add middleware.ts
@@ -1054,7 +1062,7 @@ git commit -m "feat: add Edge rate limiting middleware for cat and comment submi
 - Create: `components/Navbar.tsx`
 - Modify: `app/layout.tsx`
 
-- [ ] **Step 1: Create `components/Navbar.tsx`**
+- [x] **Step 1: Create `components/Navbar.tsx`**
 
 ```tsx
 'use client'
@@ -1111,7 +1119,7 @@ export default function Navbar() {
 }
 ```
 
-- [ ] **Step 2: Add `/api/auth/me` and `/api/cats/count` routes**
+- [x] **Step 2: Add `/api/auth/me` and `/api/cats/count` routes**
 
 Create `app/api/auth/me/route.ts`:
 ```typescript
@@ -1143,7 +1151,7 @@ export async function GET() {
 }
 ```
 
-- [ ] **Step 3: Update `app/layout.tsx`**
+- [x] **Step 3: Update `app/layout.tsx`**
 
 ```tsx
 import type { Metadata } from 'next'
@@ -1170,7 +1178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add components/Navbar.tsx app/layout.tsx app/api/auth/me/ app/api/cats/count/
@@ -1185,7 +1193,7 @@ git commit -m "feat: add Navbar with cat count and auth state"
 - Create: `components/Map.tsx`
 - Create: `app/page.tsx`
 
-- [ ] **Step 1: Create `components/Map.tsx`**
+- [x] **Step 1: Create `components/Map.tsx`**
 
 Note: Leaflet requires `window` — this component must be client-only and dynamically imported with `ssr: false`.
 
@@ -1319,7 +1327,7 @@ export default function Map() {
 }
 ```
 
-- [ ] **Step 2: Create `app/page.tsx`**
+- [x] **Step 2: Create `app/page.tsx`**
 
 ```tsx
 import dynamic from 'next/dynamic'
@@ -1338,7 +1346,7 @@ export default function HomePage() {
 }
 ```
 
-- [ ] **Step 3: Start dev server and verify the map loads**
+- [x] **Step 3: Start dev server and verify the map loads**
 
 ```bash
 npx next dev
@@ -1350,7 +1358,7 @@ Open http://localhost:3000. Expected:
 - No console errors about `window`
 - "My Location" button appears bottom-right
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add components/Map.tsx app/page.tsx
@@ -1366,7 +1374,7 @@ git commit -m "feat: add Leaflet map with bounding box fetch, clustering, and GP
 - Create: `components/CommentThread.tsx`
 - Create: `components/CommentForm.tsx`
 
-- [ ] **Step 1: Create `components/CommentThread.tsx`**
+- [x] **Step 1: Create `components/CommentThread.tsx`**
 
 ```tsx
 'use client'
@@ -1425,7 +1433,7 @@ export default function CommentThread({ comments, catId }: { comments: Comment[]
 }
 ```
 
-- [ ] **Step 2: Create `components/CommentForm.tsx`**
+- [x] **Step 2: Create `components/CommentForm.tsx`**
 
 ```tsx
 'use client'
@@ -1500,7 +1508,7 @@ export default function CommentForm({ catId, parentId, onSubmit, compact }: Prop
 }
 ```
 
-- [ ] **Step 3: Create `app/cats/[id]/page.tsx`**
+- [x] **Step 3: Create `app/cats/[id]/page.tsx`**
 
 ```tsx
 import { notFound } from 'next/navigation'
@@ -1629,7 +1637,7 @@ function ReportCat({ catId }: { catId: string }) {
 }
 ```
 
-- [ ] **Step 4: Add `ReportButton` client component**
+- [x] **Step 4: Add `ReportButton` client component**
 
 Create `components/ReportButton.tsx`:
 ```tsx
@@ -1666,7 +1674,7 @@ import ReportButton from '@/components/ReportButton'
 </div>
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/cats/ components/CommentThread.tsx components/CommentForm.tsx components/ReportButton.tsx
@@ -1681,7 +1689,7 @@ git commit -m "feat: add cat detail page with OG tags, story, and threaded comme
 - Create: `components/AddCatForm.tsx`
 - Create: `app/add/page.tsx`
 
-- [ ] **Step 1: Create `components/AddCatForm.tsx`**
+- [x] **Step 1: Create `components/AddCatForm.tsx`**
 
 ```tsx
 'use client'
@@ -1893,7 +1901,7 @@ export default function AddCatForm() {
 }
 ```
 
-- [ ] **Step 2: Create `app/add/page.tsx`**
+- [x] **Step 2: Create `app/add/page.tsx`**
 
 ```tsx
 import AddCatForm from '@/components/AddCatForm'
@@ -1910,7 +1918,7 @@ export default function AddPage() {
 }
 ```
 
-- [ ] **Step 3: Test the full add flow manually**
+- [x] **Step 3: Test the full add flow manually**
 
 ```bash
 npx next dev
@@ -1922,7 +1930,7 @@ npx next dev
 4. Fill in optional name/story — click "Add this cat!"
 5. Verify redirect to `/cats/[id]` with the new cat
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add components/AddCatForm.tsx app/add/
@@ -1937,7 +1945,7 @@ git commit -m "feat: add 3-step cat form with GPS location detection and photo u
 - Create: `app/login/page.tsx`
 - Create: `app/signup/page.tsx`
 
-- [ ] **Step 1: Create `app/signup/page.tsx`**
+- [x] **Step 1: Create `app/signup/page.tsx`**
 
 ```tsx
 'use client'
@@ -2014,7 +2022,7 @@ export default function SignupPage() {
 }
 ```
 
-- [ ] **Step 2: Create `app/login/page.tsx`**
+- [x] **Step 2: Create `app/login/page.tsx`**
 
 ```tsx
 'use client'
@@ -2088,7 +2096,7 @@ export default function LoginPage() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/login/ app/signup/
@@ -2102,7 +2110,7 @@ git commit -m "feat: add login and signup pages"
 **Files:**
 - Create: `app/profile/page.tsx`
 
-- [ ] **Step 1: Create `app/profile/page.tsx`**
+- [x] **Step 1: Create `app/profile/page.tsx`**
 
 ```tsx
 import { redirect } from 'next/navigation'
@@ -2172,7 +2180,7 @@ export default async function ProfilePage() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add app/profile/
@@ -2186,7 +2194,7 @@ git commit -m "feat: add profile page with user contributions"
 **Files:**
 - Create: `app/admin/page.tsx`
 
-- [ ] **Step 1: Create `app/admin/page.tsx`**
+- [x] **Step 1: Create `app/admin/page.tsx`**
 
 ```tsx
 import { cookies } from 'next/headers'
@@ -2226,7 +2234,7 @@ export default async function AdminPage() {
 }
 ```
 
-- [ ] **Step 2: Create `app/admin/AdminControls.tsx`**
+- [x] **Step 2: Create `app/admin/AdminControls.tsx`**
 
 ```tsx
 'use client'
@@ -2326,7 +2334,7 @@ export default function AdminControls({
 }
 ```
 
-- [ ] **Step 3: Create `app/api/admin/toggle/route.ts`**
+- [x] **Step 3: Create `app/api/admin/toggle/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -2349,7 +2357,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: Create `app/admin/login/page.tsx`**
+- [x] **Step 4: Create `app/admin/login/page.tsx`**
 
 ```tsx
 'use client'
@@ -2392,7 +2400,7 @@ export default function AdminLoginPage() {
 }
 ```
 
-- [ ] **Step 5: Create `app/api/admin/login/route.ts`**
+- [x] **Step 5: Create `app/api/admin/login/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -2414,7 +2422,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/admin/ app/api/admin/
@@ -2429,14 +2437,14 @@ git commit -m "feat: add admin moderation page with hide/restore controls"
 - Create: `.gitignore` additions
 - Create: `vercel.json`
 
-- [ ] **Step 1: Update `.gitignore`**
+- [x] **Step 1: Update `.gitignore`**
 
 ```bash
 echo ".env.local" >> .gitignore
 echo ".superpowers/" >> .gitignore
 ```
 
-- [ ] **Step 2: Run all tests**
+- [x] **Step 2: Run all tests**
 
 ```bash
 npx jest
@@ -2444,7 +2452,7 @@ npx jest
 
 Expected: All tests pass (geo utils + bbox validation).
 
-- [ ] **Step 3: Full manual smoke test**
+- [x] **Step 3: Full manual smoke test**
 
 ```bash
 npx next build && npx next start
@@ -2460,7 +2468,7 @@ Walk through:
 7. Visit `/profile` — see submitted cat and comment
 8. Visit `/admin/login` with ADMIN_PASSWORD — access moderation panel
 
-- [ ] **Step 4: Deploy to Vercel**
+- [x] **Step 4: Deploy to Vercel**
 
 ```bash
 npx vercel --prod
@@ -2473,7 +2481,7 @@ Add environment variables in Vercel dashboard:
 - `SESSION_SECRET`
 - `ADMIN_PASSWORD`
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 ```bash
 git add .gitignore
