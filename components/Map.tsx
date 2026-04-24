@@ -111,7 +111,20 @@ export default function Map() {
             display:block;background:#ff6b35;color:white;text-align:center;
             padding:6px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;
           ">See full story →</a>
-          <div style="color:#e05a2b;font-size:11px;font-weight:600;margin-top:6px;text-align:center;">❤️ ${pin.upvote_count ?? 0} loves</div>
+          <button
+            id="upvote-${pin.id}"
+            data-upvoted="0"
+            onclick="window.meowsUpvote('${pin.id}')"
+            style="
+              display:flex;align-items:center;justify-content:center;gap:5px;
+              width:100%;margin-top:8px;padding:6px;
+              background:#fff0eb;border:1.5px solid #ffb99a;
+              border-radius:6px;font-size:12px;font-weight:600;
+              color:#e05a2b;cursor:pointer;
+            "
+          >
+            ❤️ <span id="upvote-count-${pin.id}">${pin.upvote_count ?? 0}</span> loves
+          </button>
         </div>
       `)
       clusterRef.current.addLayer(marker)
@@ -127,6 +140,26 @@ export default function Map() {
       await import('leaflet.markercluster')
 
       if (mapInstanceRef.current) return
+
+      // Global upvote handler for popup buttons (Leaflet popups are plain HTML, not React)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).meowsUpvote = async (catId: string) => {
+        const btn = document.getElementById(`upvote-${catId}`)
+        const countEl = document.getElementById(`upvote-count-${catId}`)
+        if (!btn || !countEl) return
+        btn.style.opacity = '0.6'
+        try {
+          const res = await fetch(`/api/cats/${catId}/upvote`, { method: 'POST' })
+          if (!res.ok) return
+          const { upvoted, count } = await res.json()
+          countEl.textContent = String(count)
+          btn.setAttribute('data-upvoted', upvoted ? '1' : '0')
+          btn.style.background = upvoted ? '#ffe0cc' : '#fff0eb'
+          btn.style.borderColor = upvoted ? '#ff6b35' : '#ffb99a'
+        } finally {
+          btn.style.opacity = '1'
+        }
+      }
 
       const savedTheme = getSavedTheme()
       const theme = THEMES.find(t => t.id === savedTheme) ?? THEMES[0]

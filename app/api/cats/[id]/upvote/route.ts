@@ -10,20 +10,18 @@ function getClientIp(req: NextRequest): string {
   )
 }
 
-// GET — check if caller has upvoted this cat
+// GET — check if caller has upvoted this cat (also returns current count for hydration)
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const ip = getClientIp(req)
-  const { data } = await supabase
-    .from('cat_upvotes')
-    .select('id')
-    .eq('cat_id', params.id)
-    .eq('ip', ip)
-    .maybeSingle()
+  const [{ data: vote }, { data: cat }] = await Promise.all([
+    supabase.from('cat_upvotes').select('id').eq('cat_id', params.id).eq('ip', ip).maybeSingle(),
+    supabase.from('cats').select('upvote_count').eq('id', params.id).single(),
+  ])
 
-  return NextResponse.json({ upvoted: !!data })
+  return NextResponse.json({ upvoted: !!vote, count: cat?.upvote_count ?? 0 })
 }
 
 // POST — toggle upvote

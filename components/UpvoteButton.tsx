@@ -12,11 +12,15 @@ export default function UpvoteButton({ catId, initialCount }: Props) {
   const [loading, setLoading] = useState(false)
   const [checked, setChecked] = useState(false)
 
-  // Check if this visitor has already upvoted
+  // Check upvoted state AND sync real count from server (fixes SSR stale 0)
   useEffect(() => {
     fetch(`/api/cats/${catId}/upvote`)
       .then(r => r.json())
-      .then(d => { setUpvoted(d.upvoted); setChecked(true) })
+      .then(d => {
+        setUpvoted(d.upvoted)
+        setCount(d.count)   // server count overrides SSR initialCount
+        setChecked(true)
+      })
       .catch(() => setChecked(true))
   }, [catId])
 
