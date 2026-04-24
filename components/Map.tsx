@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useCallback, useState } from 'react'
 import type { CatPin } from '@/types'
+import { useCity } from '@/context/CityContext'
 
 // Leaflet and leaflet.markercluster are loaded at runtime only
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,6 +55,27 @@ function getSavedTheme(): ThemeId {
   return (localStorage.getItem(THEME_KEY) as ThemeId) ?? 'soft'
 }
 
+// Reverse geocode a lat/lng to a city-level name (zoom=10 = city granularity)
+async function getCityName(lat: number, lng: number): Promise<string> {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`,
+      { headers: { 'Accept-Language': 'en' } }
+    )
+    const d = await r.json()
+    return (
+      d.address?.city ??
+      d.address?.town ??
+      d.address?.village ??
+      d.address?.county ??
+      d.address?.state ??
+      'this area'
+    )
+  } catch {
+    return 'this area'
+  }
+}
+
 export default function Map() {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null)
@@ -66,6 +88,10 @@ export default function Map() {
   const [activeTheme, setActiveTheme] = useState<ThemeId>('soft')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [sort, setSort] = useState<'recent' | 'loved'>('recent')
+  const { setCity } = useCity()
+  // Ref so fetchAndRenderPins (memoised with []) can always call latest setCity
+  const setCityRef = useRef(setCity)
+  useEffect(() => { setCityRef.current = setCity }, [setCity])
 
   // Hydrate saved theme after mount
   useEffect(() => { setActiveTheme(getSavedTheme()) }, [])
@@ -74,6 +100,9 @@ export default function Map() {
     const bounds = map.getBounds()
     const sw = bounds.getSouthWest()
     const ne = bounds.getNorthEast()
+
+    // Clear immediately so the toggle feels instant
+    clusterRef.current.clearLayers()
 
     const params = new URLSearchParams({
       swLat: String(sw.lat),
@@ -85,20 +114,31 @@ export default function Map() {
 
     const res = await fetch(`/api/cats?${params}`)
     if (!res.ok) return
-    const pins: CatPin[] = await res.json()
 
-    clusterRef.current.clearLayers()
+    // Top 10 only — DB already returns them in the correct order
+    // (created_at DESC for recent, upvote_count DESC for loved)
+    const pins: CatPin[] = (await res.json()).slice(0, 10)
 
     pins.forEach((pin) => {
+      // Larger marker (60px) so the top-10 stand out
+      const size = 60
       const icon = L.divIcon({
         className: '',
         html: `<div style="
-          width:48px;height:48px;border-radius:50%;border:3px solid #ff6b35;
+          width:${size}px;height:${size}px;border-radius:50%;
+          border:3px solid ${sortBy === 'loved' && (pin.upvote_count ?? 0) > 0 ? '#e05a2b' : '#ff6b35'};
           background:url(${pin.thumbnail_url}) center/cover;
-          box-shadow:0 2px 8px rgba(0,0,0,0.25);cursor:pointer;
-        "></div>`,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
+          box-shadow:0 3px 12px rgba(0,0,0,0.3);cursor:pointer;
+          position:relative;
+        ">
+          ${sortBy === 'loved' && (pin.upvote_count ?? 0) > 0
+            ? `<span style="position:absolute;bottom:-4px;right:-4px;background:white;border-radius:50%;
+                font-size:13px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+                box-shadow:0 1px 4px rgba(0,0,0,0.2);">❤️</span>`
+            : ''}
+        </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       })
 
       const marker = L.marker([pin.lat, pin.lng], { icon })
@@ -127,6 +167,11 @@ export default function Map() {
           </button>
         </div>
       `)
+      // Clicking a marker → immediately update city from pin coordinates
+      marker.on('click', async () => {
+        const name = await getCityName(pin.lat, pin.lng)
+        setCityRef.current(name)
+      })
       clusterRef.current.addLayer(marker)
     })
   }, [])
@@ -165,8 +210,8 @@ export default function Map() {
       const theme = THEMES.find(t => t.id === savedTheme) ?? THEMES[0]
 
       const map = L.map(mapRef.current!, {
-        center: [19.076, 72.8777],
-        zoom: 13,
+        center: [20, 0],  // world-centred default
+        zoom: 3,
       })
 
       const tile = L.tileLayer(theme.url, {
@@ -200,8 +245,10 @@ export default function Map() {
           btn.innerHTML = '📍 My Location'
           btn.style.cssText = 'background:white;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);margin-bottom:8px;'
           L.DomEvent.on(btn, 'click', () => {
-            navigator.geolocation.getCurrentPosition(pos => {
-              map.setView([pos.coords.latitude, pos.coords.longitude], 15)
+            navigator.geolocation.getCurrentPosition(async pos => {
+              map.setView([pos.coords.latitude, pos.coords.longitude], 13)
+              const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
+              setCity(name)
             })
           })
           return btn
@@ -212,12 +259,37 @@ export default function Map() {
       mapInstanceRef.current = map
       clusterRef.current = cluster
 
-      let timer: ReturnType<typeof setTimeout>
+      // Reverse geocode on moveend (debounced 1s — don't hammer Nominatim)
+      let cityTimer: ReturnType<typeof setTimeout>
+      let pinsTimer: ReturnType<typeof setTimeout>
       map.on('moveend', () => {
-        clearTimeout(timer)
-        // Read sort from closure-captured ref so we always use latest value
-        timer = setTimeout(() => fetchAndRenderPins(map, sortRef.current), 300)
+        clearTimeout(pinsTimer)
+        clearTimeout(cityTimer)
+        pinsTimer = setTimeout(() => fetchAndRenderPins(map, sortRef.current), 300)
+        cityTimer = setTimeout(async () => {
+          const zoom = map.getZoom()
+          if (zoom < 8) {
+            setCity('the World')
+          } else {
+            const c = map.getCenter()
+            const name = await getCityName(c.lat, c.lng)
+            setCity(name)
+          }
+        }, 600) // 600ms debounce — snappy but avoids hammering Nominatim
       })
+
+      // Try GPS to set initial center (HTTPS only)
+      if (window.isSecureContext && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async pos => {
+            map.setView([pos.coords.latitude, pos.coords.longitude], 13)
+            const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
+            setCity(name)
+            fetchAndRenderPins(map, 'recent')
+          },
+          () => {/* silently fall back to Mumbai default */}
+        )
+      }
 
       await fetchAndRenderPins(map, 'recent')
     }

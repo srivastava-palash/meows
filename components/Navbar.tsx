@@ -2,9 +2,11 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useCity } from '@/context/CityContext'
 
 export default function Navbar() {
   const router = useRouter()
+  const { city } = useCity()
   const [username, setUsername] = useState<string | null>(null)
   const [catCount, setCatCount] = useState<number | null>(null)
 
@@ -26,7 +28,7 @@ export default function Navbar() {
   return (
     <nav className="bg-[#ff6b35] px-4 py-2.5 flex items-center justify-between sticky top-0 z-50">
       <Link href="/" className="text-white font-extrabold text-base tracking-tight">
-        🐾 Meows of Mumbai
+        🐾 Meows of {city}
       </Link>
       <div className="flex items-center gap-3">
         {catCount != null && (
