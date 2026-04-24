@@ -92,11 +92,15 @@ export default function Map() {
   // Ref so fetchAndRenderPins (memoised with []) can always call latest setCity
   const setCityRef = useRef(setCity)
   useEffect(() => { setCityRef.current = setCity }, [setCity])
+  // Monotonic counter — stale fetch responses are discarded if a newer one started
+  const fetchIdRef = useRef(0)
 
   // Hydrate saved theme after mount
   useEffect(() => { setActiveTheme(getSavedTheme()) }, [])
 
   const fetchAndRenderPins = useCallback(async (map: import('leaflet').Map, sortBy: 'recent' | 'loved' = 'recent') => {
+    const myId = ++fetchIdRef.current   // grab a unique ID for this invocation
+
     const bounds = map.getBounds()
     const sw = bounds.getSouthWest()
     const ne = bounds.getNorthEast()
@@ -114,6 +118,8 @@ export default function Map() {
 
     const res = await fetch(`/api/cats?${params}`)
     if (!res.ok) return
+    // Discard results if a newer fetch has already started
+    if (myId !== fetchIdRef.current) return
 
     // Top 10 only — DB already returns them in the correct order
     // (created_at DESC for recent, upvote_count DESC for loved)
@@ -194,7 +200,16 @@ export default function Map() {
         if (!btn || !countEl) return
         btn.style.opacity = '0.6'
         try {
-          const res = await fetch(`/api/cats/${catId}/upvote`, { method: 'POST' })
+          const res = await fetch(`/api/cats/${catId}/upvote`, {
+            method: 'POST',
+            headers: (() => {
+              try {
+                let id = localStorage.getItem('meows_voter')
+                if (!id) { id = crypto.randomUUID(); localStorage.setItem('meows_voter', id) }
+                return { 'x-voter-id': id } as Record<string, string>
+              } catch { return {} as Record<string, string> }
+            })(),
+          })
           if (!res.ok) return
           const { upvoted, count } = await res.json()
           countEl.textContent = String(count)
@@ -283,9 +298,9 @@ export default function Map() {
         navigator.geolocation.getCurrentPosition(
           async pos => {
             map.setView([pos.coords.latitude, pos.coords.longitude], 13)
+            // setView triggers moveend which will fetch pins — no explicit call needed
             const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
             setCity(name)
-            fetchAndRenderPins(map, 'recent')
           },
           () => {/* silently fall back to Mumbai default */}
         )

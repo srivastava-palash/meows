@@ -6,6 +6,26 @@ interface Props {
   initialCount: number
 }
 
+/** Get or create a stable anonymous voter UUID stored in localStorage. */
+function getVoterId(): string {
+  const key = 'meows_voter'
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(key, id)
+  }
+  return id
+}
+
+/** Headers to send on every upvote request so the server can match the voter. */
+function voterHeaders(): Record<string, string> {
+  try {
+    return { 'x-voter-id': getVoterId() }
+  } catch {
+    return {} // SSR / localStorage unavailable
+  }
+}
+
 export default function UpvoteButton({ catId, initialCount }: Props) {
   const [count, setCount] = useState(initialCount)
   const [upvoted, setUpvoted] = useState(false)
@@ -14,11 +34,11 @@ export default function UpvoteButton({ catId, initialCount }: Props) {
 
   // Check upvoted state AND sync real count from server (fixes SSR stale 0)
   useEffect(() => {
-    fetch(`/api/cats/${catId}/upvote`)
+    fetch(`/api/cats/${catId}/upvote`, { headers: voterHeaders() })
       .then(r => r.json())
       .then(d => {
         setUpvoted(d.upvoted)
-        setCount(d.count)   // server count overrides SSR initialCount
+        setCount(d.count)
         setChecked(true)
       })
       .catch(() => setChecked(true))
@@ -32,7 +52,10 @@ export default function UpvoteButton({ catId, initialCount }: Props) {
     setUpvoted(u => !u)
     setCount(c => upvoted ? c - 1 : c + 1)
 
-    const res = await fetch(`/api/cats/${catId}/upvote`, { method: 'POST' })
+    const res = await fetch(`/api/cats/${catId}/upvote`, {
+      method: 'POST',
+      headers: voterHeaders(),
+    })
     setLoading(false)
     if (res.ok) {
       const d = await res.json()
