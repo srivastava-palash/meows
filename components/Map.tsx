@@ -1,15 +1,72 @@
 'use client'
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import type { CatPin } from '@/types'
 
 // Leaflet and leaflet.markercluster are loaded at runtime only
-let L: typeof import('leaflet')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let L: any
+
+// ── Map themes ────────────────────────────────────────────────────────────────
+const THEMES = [
+  {
+    id: 'soft',
+    label: 'Soft',
+    emoji: '🌸',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    options: { subdomains: 'abcd', maxZoom: 19 },
+    preview: '#e8e4dc',
+  },
+  {
+    id: 'standard',
+    label: 'Standard',
+    emoji: '🗺️',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    options: { maxZoom: 19 },
+    preview: '#c8dfc8',
+  },
+  {
+    id: 'dark',
+    label: 'Dark',
+    emoji: '🌑',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    options: { subdomains: 'abcd', maxZoom: 19 },
+    preview: '#2b2b3b',
+  },
+  {
+    id: 'satellite',
+    label: 'Satellite',
+    emoji: '🛰️',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN',
+    options: { maxZoom: 18 },
+    preview: '#3d5a3e',
+  },
+] as const
+
+type ThemeId = typeof THEMES[number]['id']
+const THEME_KEY = 'meows-map-theme'
+
+function getSavedTheme(): ThemeId {
+  if (typeof window === 'undefined') return 'soft'
+  return (localStorage.getItem(THEME_KEY) as ThemeId) ?? 'soft'
+}
 
 export default function Map() {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const clusterRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tileLayerRef = useRef<any>(null)
+
+  const [activeTheme, setActiveTheme] = useState<ThemeId>('soft')
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Hydrate saved theme after mount
+  useEffect(() => { setActiveTheme(getSavedTheme()) }, [])
 
   const fetchAndRenderPins = useCallback(async (map: import('leaflet').Map) => {
     const bounds = map.getBounds()
@@ -57,27 +114,30 @@ export default function Map() {
     })
   }, [])
 
+  // Init map once
   useEffect(() => {
     if (mapInstanceRef.current || !mapRef.current) return
 
     async function init() {
       L = (await import('leaflet')).default
-      await import('leaflet/dist/leaflet.css')
       await import('leaflet.markercluster')
-      await import('leaflet.markercluster/dist/MarkerCluster.css')
-      await import('leaflet.markercluster/dist/MarkerCluster.Default.css')
 
-      // Guard: if another effect run already initialized this container, bail out
       if (mapInstanceRef.current) return
 
+      const savedTheme = getSavedTheme()
+      const theme = THEMES.find(t => t.id === savedTheme) ?? THEMES[0]
+
       const map = L.map(mapRef.current!, {
-        center: [19.076, 72.8777], // Mumbai
+        center: [19.076, 72.8777],
         zoom: 13,
       })
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+      const tile = L.tileLayer(theme.url, {
+        attribution: theme.attribution,
+        ...theme.options,
       }).addTo(map)
+
+      tileLayerRef.current = tile
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cluster = (L as any).markerClusterGroup({
@@ -101,7 +161,7 @@ export default function Map() {
         onAdd() {
           const btn = L.DomUtil.create('button')
           btn.innerHTML = '📍 My Location'
-          btn.style.cssText = 'background:white;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);'
+          btn.style.cssText = 'background:white;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);margin-bottom:8px;'
           L.DomEvent.on(btn, 'click', () => {
             navigator.geolocation.getCurrentPosition(pos => {
               map.setView([pos.coords.latitude, pos.coords.longitude], 15)
@@ -115,14 +175,12 @@ export default function Map() {
       mapInstanceRef.current = map
       clusterRef.current = cluster
 
-      // Debounced moveend
       let timer: ReturnType<typeof setTimeout>
       map.on('moveend', () => {
         clearTimeout(timer)
         timer = setTimeout(() => fetchAndRenderPins(map), 300)
       })
 
-      // Initial load
       await fetchAndRenderPins(map)
     }
 
@@ -132,8 +190,119 @@ export default function Map() {
       mapInstanceRef.current?.remove()
       mapInstanceRef.current = null
       clusterRef.current = null
+      tileLayerRef.current = null
     }
   }, [fetchAndRenderPins])
 
-  return <div ref={mapRef} style={{ height: 'calc(100vh - 44px)', width: '100%' }} />
+  // Switch tile layer when theme changes
+  function applyTheme(id: ThemeId) {
+    const theme = THEMES.find(t => t.id === id)
+    if (!theme || !mapInstanceRef.current || !L) return
+    if (tileLayerRef.current) {
+      mapInstanceRef.current.removeLayer(tileLayerRef.current)
+    }
+    tileLayerRef.current = L.tileLayer(theme.url, {
+      attribution: theme.attribution,
+      ...theme.options,
+    }).addTo(mapInstanceRef.current)
+    localStorage.setItem(THEME_KEY, id)
+    setActiveTheme(id)
+    setPickerOpen(false)
+  }
+
+  return (
+    <div style={{ position: 'relative', height: 'calc(100vh - 44px)', width: '100%' }}>
+      <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+
+      {/* ── Map theme picker ──────────────────────────────── */}
+      <div style={{
+        position: 'absolute',
+        bottom: 36,
+        left: 12,
+        zIndex: 1000,
+        fontFamily: 'sans-serif',
+      }}>
+        {/* Expanded picker */}
+        {pickerOpen && (
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            marginBottom: 8,
+            background: 'white',
+            borderRadius: 12,
+            padding: '8px 10px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+          }}>
+            {THEMES.map(theme => (
+              <button
+                key={theme.id}
+                onClick={() => applyTheme(theme.id)}
+                title={theme.label}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  border: activeTheme === theme.id ? '2.5px solid #ff6b35' : '2.5px solid transparent',
+                  borderRadius: 10,
+                  padding: '4px 6px',
+                  background: 'none',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s',
+                }}
+              >
+                {/* Preview swatch */}
+                <div style={{
+                  width: 44,
+                  height: 36,
+                  borderRadius: 6,
+                  background: theme.preview,
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  fontSize: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {theme.emoji}
+                </div>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: activeTheme === theme.id ? 700 : 500,
+                  color: activeTheme === theme.id ? '#ff6b35' : '#555',
+                }}>
+                  {theme.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Toggle button */}
+        <button
+          onClick={() => setPickerOpen(o => !o)}
+          title="Change map style"
+          style={{
+            background: 'white',
+            border: 'none',
+            borderRadius: 8,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            color: '#333',
+          }}
+        >
+          {THEMES.find(t => t.id === activeTheme)?.emoji ?? '🗺️'}
+          {' '}
+          {THEMES.find(t => t.id === activeTheme)?.label ?? 'Map style'}
+          {' '}
+          <span style={{ fontSize: 9, opacity: 0.5 }}>{pickerOpen ? '▼' : '▲'}</span>
+        </button>
+      </div>
+    </div>
+  )
 }

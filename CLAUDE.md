@@ -10,8 +10,54 @@ A community map website for Mumbai's stray cats. Anyone can add a photo + locati
 |---|---|---|
 | Design spec | `docs/superpowers/specs/2026-04-23-meows-of-mumbai-design.md` | What we're building and why |
 | Implementation plan | `docs/superpowers/plans/2026-04-23-meows-of-mumbai.md` | Step-by-step tasks with code |
+| Codebase graph | `graphify-out/GRAPH_REPORT.md` | Function-level dependency map — read before touching shared code |
+| Graph data | `graphify-out/graph.json` | Raw node/edge data consumed by `graphify` CLI |
 
-**Always read both before touching code.** The spec defines requirements; the plan defines how to implement them.
+**Always read both spec and plan before touching code.** The spec defines requirements; the plan defines how to implement them.
+
+## Codebase Graph (Graphify)
+
+This repo uses **graphify** to maintain a live function-level dependency graph. Use it to understand how files connect before making changes.
+
+### When to use it
+
+- **Before touching shared utilities** (`lib/`, `types/`, `middleware.ts`) — check what depends on them
+- **Before refactoring** — find all callers of a function
+- **When onboarding** — read `GRAPH_REPORT.md` for a structural overview in seconds
+- **After adding new files** — run `graphify-update` to keep the graph current
+
+### Commands
+
+```bash
+# Rebuild graph after any file change
+graphify-update
+
+# Read the human summary (god nodes, communities, knowledge gaps)
+cat graphify-out/GRAPH_REPORT.md
+
+# Deep extraction (richer edges, costs tokens — use sparingly)
+graphify-update --mode deep
+```
+
+### What the output tells you
+
+| Section | What to look for |
+|---|---|
+| **God Nodes** | Functions with the most edges — changing these has the widest blast radius |
+| **Communities** | Clusters of tightly coupled functions — a change inside one community rarely affects others |
+| **Knowledge Gaps** | Thin communities / isolated nodes — may be dead code or missing connections |
+| **Surprising Connections** | Cross-file dependencies you wouldn't guess from file names |
+
+### Current god nodes (as of last `graphify-update`)
+
+> Re-run `graphify-update` and read `GRAPH_REPORT.md` for the latest. The list below is a snapshot.
+
+- `setDraft()` — form persistence hub in `AddCatForm.tsx`; 4 callers
+- `enterStep2()` — triggers GPS + form transition; calls `goTo`, `tryGps`, `setGpsStatus`
+- `middleware()` — rate-limits `/api/cats` and `/api/comments` POST requests
+- `getSession()` — auth entry point used by all protected routes
+
+> **Rule:** If you edit a god node, check every edge in `graph.json` first.
 
 ## Golden Rule: Always Update the Plan
 
@@ -71,7 +117,7 @@ Never implement something that contradicts the spec without updating the spec fi
 - **Map:** Leaflet.js + leaflet.markercluster (dynamic import, client-only)
 - **Database:** Supabase — PostgreSQL + PostGIS (`geography(Point, 4326)`)
 - **Storage:** Supabase Storage (bucket: `cat-photos`)
-- **Auth:** Custom `users` table + bcryptjs + iron-session (no email)
+- **Auth:** Custom `users` table + bcryptjs + iron-session; optional `email` field for password reset (never shown publicly)
 - **Image processing:** sharp (thumbnail 120×120px)
 - **Tests:** Jest (`npx jest`)
 - **Deploy:** Vercel

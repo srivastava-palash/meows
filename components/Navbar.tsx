@@ -12,7 +12,7 @@ export default function Navbar() {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       if (d.username) setUsername(d.username)
     }).catch(() => {})
-    fetch('/api/cats/count').then(r => r.json()).then(d => {
+    fetch('/api/cats/count', { cache: 'no-store' }).then(r => r.json()).then(d => {
       if (d.count != null) setCatCount(d.count)
     }).catch(() => {})
   }, [])

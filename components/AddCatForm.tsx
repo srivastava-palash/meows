@@ -1,110 +1,206 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import type { UploadResult } from '@/types'
+
+// LocationPicker must be client-only (Leaflet needs window)
+const LocationPicker = dynamic(() => import('./LocationPicker'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 220, borderRadius: 12, background: '#e8ead8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: 13, color: '#888' }}>Loading map…</span>
+    </div>
+  ),
+})
 
 type Step = 1 | 2 | 3
 
-interface FormState {
-  photo: File | null
-  preview: string | null
+interface PersistedState {
+  step: Step
   upload: UploadResult | null
-  lat: number | null
-  lng: number | null
+  lat: number
+  lng: number
   locationName: string | null
   name: string
   story: string
-  lastSeenAt: string
+}
+
+const SESSION_KEY = 'meows-add-cat-draft'
+const MUMBAI = { lat: 19.076, lng: 72.8777 }
+
+function loadDraft(): PersistedState {
+  if (typeof window === 'undefined') return defaultDraft()
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as PersistedState
+      // Guard against stale drafts from old code where lat/lng were nullable
+      return {
+        ...parsed,
+        lat: parsed.lat ?? MUMBAI.lat,
+        lng: parsed.lng ?? MUMBAI.lng,
+      }
+    }
+  } catch {}
+  return defaultDraft()
+}
+
+function defaultDraft(): PersistedState {
+  return { step: 1, upload: null, lat: MUMBAI.lat, lng: MUMBAI.lng, locationName: null, name: '', story: '' }
+}
+
+function saveDraft(s: PersistedState) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)) } catch {}
+}
+
+function clearDraft() {
+  try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+    const d = await r.json()
+    return d.address?.suburb ?? d.address?.neighbourhood ?? d.address?.city_district ?? d.address?.city ?? null
+  } catch { return null }
 }
 
 export default function AddCatForm() {
   const router = useRouter()
-  const [step, setStep] = useState<Step>(1)
-  const [state, setState] = useState<FormState>({
-    photo: null, preview: null, upload: null,
-    lat: null, lng: null, locationName: null,
-    name: '', story: '', lastSeenAt: '',
-  })
+
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [draft, setDraftRaw] = useState<PersistedState>(defaultDraft)
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'detecting' | 'done' | 'unavailable'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Step 1: Photo selection
+  // Hydrate from sessionStorage after mount
+  useEffect(() => {
+    const saved = loadDraft()
+    setDraftRaw(saved)
+    if (saved.upload) setPreview(saved.upload.thumbnail_url)
+  }, [])
+
+  function setDraft(updater: (prev: PersistedState) => PersistedState) {
+    setDraftRaw(prev => {
+      const next = updater(prev)
+      saveDraft(next)
+      return next
+    })
+  }
+
+  function goTo(s: Step) {
+    setDraft(prev => ({ ...prev, step: s }))
+    setError(null)
+  }
+
+  // Called when user drags the pin
+  async function handlePinMove(lat: number, lng: number) {
+    setDraft(prev => ({ ...prev, lat, lng }))
+    const name = await reverseGeocode(lat, lng)
+    setDraft(prev => ({ ...prev, locationName: name }))
+  }
+
+  // GPS — only works on secure context (https or localhost)
+  async function tryGps() {
+    if (!navigator.geolocation) {
+      setGpsStatus('unavailable')
+      return
+    }
+    if (!window.isSecureContext) {
+      setGpsStatus('unavailable')
+      return
+    }
+    setGpsStatus('detecting')
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        const name = await reverseGeocode(lat, lng)
+        setDraft(prev => ({ ...prev, lat, lng, locationName: name }))
+        setGpsStatus('done')
+      },
+      () => setGpsStatus('unavailable'),
+      { timeout: 10000, maximumAge: 60000 }
+    )
+  }
+
+  // On entering step 2: always auto-try GPS (works on HTTPS; fails fast on HTTP → shows Find me button)
+  function enterStep2() {
+    goTo(2)
+    setGpsStatus('idle')
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      tryGps()
+    } else {
+      setGpsStatus('unavailable')
+    }
+  }
+
+  // Step 1: photo
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setState(s => ({ ...s, photo: file, preview: URL.createObjectURL(file) }))
+    setPhoto(file)
+    setPreview(URL.createObjectURL(file))
   }
 
   async function handlePhotoNext() {
-    if (!state.photo) { setError('Please select a photo'); return }
+    if (!photo && !draft.upload) { setError('Please select a photo'); return }
+    if (draft.upload && !photo) { enterStep2(); return } // already uploaded, skip re-upload
     setLoading(true)
     setError(null)
     const fd = new FormData()
-    fd.append('photo', state.photo)
+    fd.append('photo', photo!)
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     setLoading(false)
     if (!res.ok) { setError('Upload failed. Try again.'); return }
     const upload: UploadResult = await res.json()
-    setState(s => ({ ...s, upload }))
-    setStep(2)
-    // Auto-detect GPS
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude: lat, longitude: lng } = pos.coords
-        setState(s => ({ ...s, lat, lng }))
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
-          .then(r => r.json())
-          .then(d => {
-            const name = d.address?.suburb ?? d.address?.neighbourhood ?? d.address?.city_district ?? null
-            setState(s => ({ ...s, locationName: name }))
-          })
-          .catch(() => {})
-      },
-      () => {} // GPS denied — user can skip
-    )
+    setDraft(prev => ({ ...prev, upload }))
+    enterStep2()
   }
 
   async function handleSubmit() {
-    if (!state.upload || state.lat == null || state.lng == null) {
-      setError('Location is required')
-      return
-    }
+    if (!draft.upload) { setError('Photo upload missing'); return }
     setLoading(true)
     setError(null)
     const res = await fetch('/api/cats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...state.upload,
-        lat: state.lat,
-        lng: state.lng,
-        location_name: state.locationName,
-        name: state.name || null,
-        story: state.story || null,
-        last_seen_at: state.lastSeenAt || null,
+        ...draft.upload,
+        lat: draft.lat,
+        lng: draft.lng,
+        location_name: draft.locationName,
+        name: draft.name || null,
+        story: draft.story || null,
+        last_seen_at: null,
       }),
     })
     setLoading(false)
     if (!res.ok) { setError('Failed to add cat. Try again.'); return }
     const { id } = await res.json()
+    clearDraft()
     router.push(`/cats/${id}`)
   }
 
   const progress = ['', 'Photo', 'Location', 'Details']
+  const displayPreview = preview ?? draft.upload?.thumbnail_url ?? null
+  const isSecure = typeof window !== 'undefined' && window.isSecureContext
 
   return (
     <div className="max-w-sm mx-auto px-4 py-6">
       {/* Progress */}
       <div className="flex gap-2 mb-6">
         {[1, 2, 3].map(n => (
-          <div key={n} className={`flex-1 h-1 rounded-full ${n <= step ? 'bg-[#ff6b35]' : 'bg-gray-200'}`} />
+          <div key={n} className={`flex-1 h-1 rounded-full ${n <= draft.step ? 'bg-[#ff6b35]' : 'bg-gray-200'}`} />
         ))}
       </div>
-      <p className="text-xs text-gray-400 mb-4">Step {step} of 3 — {progress[step]}</p>
+      <p className="text-xs text-gray-400 mb-4">Step {draft.step} of 3 — {progress[draft.step]}</p>
 
-      {/* Step 1: Photo */}
-      {step === 1 && (
+      {/* ── Step 1: Photo ─────────────────────────────────── */}
+      {draft.step === 1 && (
         <div className="space-y-4">
           <h2 className="text-lg font-extrabold text-gray-900">Add a cat photo</h2>
           <p className="text-sm text-gray-500">Show us who you found!</p>
@@ -112,21 +208,21 @@ export default function AddCatForm() {
             onClick={() => fileRef.current?.click()}
             className="border-2 border-dashed border-[#ffb99a] rounded-xl p-10 text-center bg-[#fff8f5] cursor-pointer"
           >
-            {state.preview ? (
-              <img src={state.preview} alt="preview" className="w-full rounded-lg object-cover max-h-48" />
+            {displayPreview ? (
+              <img src={displayPreview} alt="preview" className="w-full rounded-lg object-cover max-h-48" />
             ) : (
               <>
                 <div className="text-4xl mb-2">📷</div>
-                <p className="text-sm font-semibold text-[#ff6b35]">Take a photo</p>
-                <p className="text-xs text-gray-400 mt-1">or tap to upload from gallery</p>
+                <p className="text-sm font-semibold text-[#ff6b35]">Take or choose a photo</p>
+                <p className="text-xs text-gray-400 mt-1">tap to open camera or gallery</p>
               </>
             )}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           {error && <p className="text-red-500 text-xs">{error}</p>}
           <button
             onClick={handlePhotoNext}
-            disabled={loading || !state.photo}
+            disabled={loading || (!photo && !draft.upload)}
             className="w-full bg-[#ff6b35] text-white font-bold py-3 rounded-xl disabled:opacity-50"
           >
             {loading ? 'Uploading…' : 'Next →'}
@@ -134,48 +230,72 @@ export default function AddCatForm() {
         </div>
       )}
 
-      {/* Step 2: Location */}
-      {step === 2 && (
-        <div className="space-y-4">
+      {/* ── Step 2: Location ──────────────────────────────── */}
+      {draft.step === 2 && (
+        <div className="space-y-3">
           <h2 className="text-lg font-extrabold text-gray-900">Where was this cat?</h2>
-          {state.lat && state.lng ? (
-            <div className="bg-[#fff8f5] border border-[#ffe0cc] rounded-xl p-4 text-center">
-              <div className="text-3xl mb-2">📍</div>
-              <p className="text-sm font-semibold text-gray-800">{state.locationName ?? 'Location detected'}</p>
-              <p className="text-xs text-gray-400 mt-1">{state.lat.toFixed(5)}, {state.lng.toFixed(5)}</p>
-            </div>
-          ) : (
-            <div className="bg-[#fff8f5] border border-[#ffe0cc] rounded-xl p-6 text-center text-gray-400 text-sm">
-              Detecting GPS location…
-            </div>
-          )}
-          <p className="text-xs text-gray-400 text-center">
-            Location is auto-detected from your device. On desktop, grant browser location access.
+          <p className="text-xs text-gray-400">
+            Drag the 📍 pin to the exact spot, or use the button below to auto-detect.
           </p>
+
+          {/* Draggable map — always shown, works on HTTP and HTTPS */}
+          <LocationPicker
+            lat={draft.lat}
+            lng={draft.lng}
+            onChange={handlePinMove}
+          />
+
+          {/* Location label + GPS status */}
+          <div className="flex items-center justify-between bg-[#fff8f5] border border-[#ffe0cc] rounded-lg px-3 py-2">
+            <span className="text-sm text-gray-700 font-medium truncate pr-2">
+              {draft.locationName ?? `${(draft.lat ?? MUMBAI.lat).toFixed(4)}, ${(draft.lng ?? MUMBAI.lng).toFixed(4)}`}
+            </span>
+            {gpsStatus === 'detecting' || gpsStatus === 'idle' ? (
+              <span className="text-xs text-[#ff6b35] animate-pulse shrink-0">📡 Finding you…</span>
+            ) : gpsStatus === 'unavailable' ? (
+              <button
+                onClick={tryGps}
+                className="text-xs bg-[#ff6b35] text-white px-2 py-1 rounded-md shrink-0"
+              >
+                📡 Find me
+              </button>
+            ) : null /* gpsStatus === 'done' — pin already centred, no button needed */}
+          </div>
+
+          {gpsStatus === 'unavailable' && (
+            <p className="text-xs text-amber-600 flex items-start gap-1">
+              <span>⚠️</span>
+              <span>
+                {isSecure
+                  ? 'GPS denied — drag the pin to the right spot, or tap Find me to retry.'
+                  : 'GPS needs HTTPS to auto-detect. Drag the pin to the spot — works perfectly!'}
+              </span>
+            </p>
+          )}
+
           {error && <p className="text-red-500 text-xs">{error}</p>}
           <button
-            onClick={() => setStep(3)}
-            disabled={state.lat == null}
-            className="w-full bg-[#ff6b35] text-white font-bold py-3 rounded-xl disabled:opacity-50"
+            onClick={() => goTo(3)}
+            className="w-full bg-[#ff6b35] text-white font-bold py-3 rounded-xl"
           >
             Next →
           </button>
-          <button onClick={() => setStep(1)} className="w-full text-gray-400 text-sm py-2">
+          <button onClick={() => goTo(1)} className="w-full text-gray-400 text-sm py-2">
             ← Back
           </button>
         </div>
       )}
 
-      {/* Step 3: Details */}
-      {step === 3 && (
+      {/* ── Step 3: Details ───────────────────────────────── */}
+      {draft.step === 3 && (
         <div className="space-y-4">
           <h2 className="text-lg font-extrabold text-gray-900">Tell us about this cat</h2>
           <p className="text-sm text-gray-400">All optional — you can skip straight to adding!</p>
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Cat&apos;s name or nickname</label>
             <input
-              value={state.name}
-              onChange={e => setState(s => ({ ...s, name: e.target.value }))}
+              value={draft.name}
+              onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
               placeholder="e.g. Biscuit, Tiger, Mango…"
               className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
             />
@@ -183,8 +303,8 @@ export default function AddCatForm() {
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Short story</label>
             <textarea
-              value={state.story}
-              onChange={e => setState(s => ({ ...s, story: e.target.value }))}
+              value={draft.story}
+              onChange={e => setDraft(prev => ({ ...prev, story: e.target.value }))}
               placeholder="What's special about this cat?"
               className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm bg-[#fffaf8] h-28 resize-none focus:outline-none focus:border-[#ff6b35]"
             />
@@ -197,7 +317,7 @@ export default function AddCatForm() {
           >
             {loading ? 'Adding…' : '🐾 Add this cat!'}
           </button>
-          <button onClick={() => setStep(2)} className="w-full text-gray-400 text-sm py-2">
+          <button onClick={() => goTo(2)} className="w-full text-gray-400 text-sm py-2">
             ← Back
           </button>
         </div>

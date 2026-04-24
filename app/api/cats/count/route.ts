@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/db'
 
-export const revalidate = 60
+export const revalidate = 0 // always fresh
 
 export async function GET() {
   const { count } = await supabase

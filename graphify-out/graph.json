@@ -9,7 +9,7 @@
       "source_file": "middleware.ts",
       "source_location": "L1",
       "id": "middleware",
-      "community": 3
+      "community": 4
     },
     {
       "label": "getIp()",
@@ -17,7 +17,7 @@
       "source_file": "middleware.ts",
       "source_location": "L7",
       "id": "middleware_getip",
-      "community": 3
+      "community": 4
     },
     {
       "label": "isRateLimited()",
@@ -25,7 +25,7 @@
       "source_file": "middleware.ts",
       "source_location": "L11",
       "id": "middleware_isratelimited",
-      "community": 3
+      "community": 4
     },
     {
       "label": "middleware()",
@@ -33,7 +33,7 @@
       "source_file": "middleware.ts",
       "source_location": "L25",
       "id": "middleware_middleware",
-      "community": 3
+      "community": 4
     },
     {
       "label": "next-env.d.ts",
@@ -41,7 +41,7 @@
       "source_file": "next-env.d.ts",
       "source_location": "L1",
       "id": "next_env_d",
-      "community": 10
+      "community": 9
     },
     {
       "label": "tailwind.config.ts",
@@ -49,7 +49,7 @@
       "source_file": "tailwind.config.ts",
       "source_location": "L1",
       "id": "tailwind_config",
-      "community": 11
+      "community": 10
     },
     {
       "label": "jest.config.ts",
@@ -57,7 +57,7 @@
       "source_file": "jest.config.ts",
       "source_location": "L1",
       "id": "jest_config",
-      "community": 12
+      "community": 11
     },
     {
       "label": "index.ts",
@@ -65,7 +65,7 @@
       "source_file": "types/index.ts",
       "source_location": "L1",
       "id": "index",
-      "community": 13
+      "community": 12
     },
     {
       "label": "leaflet-css.d.ts",
@@ -73,7 +73,7 @@
       "source_file": "types/leaflet-css.d.ts",
       "source_location": "L1",
       "id": "leaflet_css_d",
-      "community": 14
+      "community": 13
     },
     {
       "label": "layout.tsx",
@@ -81,7 +81,7 @@
       "source_file": "app/layout.tsx",
       "source_location": "L1",
       "id": "layout",
-      "community": 4
+      "community": 5
     },
     {
       "label": "RootLayout()",
@@ -89,7 +89,7 @@
       "source_file": "app/layout.tsx",
       "source_location": "L13",
       "id": "layout_rootlayout",
-      "community": 4
+      "community": 5
     },
     {
       "label": "page.tsx",
@@ -116,11 +116,11 @@
       "community": 0
     },
     {
-      "label": "SignupPage()",
+      "label": "handleSubmit()",
       "file_type": "code",
       "source_file": "app/signup/page.tsx",
-      "source_location": "L6",
-      "id": "page_signuppage",
+      "source_location": "L14",
+      "id": "page_handlesubmit",
       "community": 0
     },
     {
@@ -129,7 +129,7 @@
       "source_file": "app/admin/AdminControls.tsx",
       "source_location": "L1",
       "id": "admincontrols",
-      "community": 7
+      "community": 0
     },
     {
       "label": "AdminControls()",
@@ -137,7 +137,7 @@
       "source_file": "app/admin/AdminControls.tsx",
       "source_location": "L14",
       "id": "admincontrols_admincontrols",
-      "community": 7
+      "community": 0
     },
     {
       "label": "AdminPage()",
@@ -177,7 +177,7 @@
       "source_file": "app/api/upload/route.ts",
       "source_location": "L1",
       "id": "route",
-      "community": 1
+      "community": 2
     },
     {
       "label": "POST()",
@@ -185,7 +185,7 @@
       "source_file": "app/api/upload/route.ts",
       "source_location": "L10",
       "id": "route_post",
-      "community": 1
+      "community": 2
     },
     {
       "label": "GET()",
@@ -193,7 +193,7 @@
       "source_file": "app/api/auth/me/route.ts",
       "source_location": "L4",
       "id": "route_get",
-      "community": 1
+      "community": 2
     },
     {
       "label": "LoginPage()",
@@ -209,7 +209,7 @@
       "source_file": "components/CommentThread.tsx",
       "source_location": "L1",
       "id": "commentthread",
-      "community": 5
+      "community": 6
     },
     {
       "label": "handleReport()",
@@ -217,7 +217,7 @@
       "source_file": "components/CommentThread.tsx",
       "source_location": "L10",
       "id": "commentthread_handlereport",
-      "community": 5
+      "community": 6
     },
     {
       "label": "Navbar.tsx",
@@ -225,7 +225,7 @@
       "source_file": "components/Navbar.tsx",
       "source_location": "L1",
       "id": "navbar",
-      "community": 4
+      "community": 5
     },
     {
       "label": "handleLogout()",
@@ -233,7 +233,23 @@
       "source_file": "components/Navbar.tsx",
       "source_location": "L20",
       "id": "navbar_handlelogout",
-      "community": 4
+      "community": 5
+    },
+    {
+      "label": "LocationPicker.tsx",
+      "file_type": "code",
+      "source_file": "components/LocationPicker.tsx",
+      "source_location": "L1",
+      "id": "locationpicker",
+      "community": 7
+    },
+    {
+      "label": "LocationPicker()",
+      "file_type": "code",
+      "source_file": "components/LocationPicker.tsx",
+      "source_location": "L13",
+      "id": "locationpicker_locationpicker",
+      "community": 7
     },
     {
       "label": "AddCatForm.tsx",
@@ -241,31 +257,71 @@
       "source_file": "components/AddCatForm.tsx",
       "source_location": "L1",
       "id": "addcatform",
-      "community": 6
+      "community": 1
+    },
+    {
+      "label": "setDraft()",
+      "file_type": "code",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L87",
+      "id": "addcatform_setdraft",
+      "community": 1
+    },
+    {
+      "label": "goTo()",
+      "file_type": "code",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L95",
+      "id": "addcatform_goto",
+      "community": 1
+    },
+    {
+      "label": "handlePinMove()",
+      "file_type": "code",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L101",
+      "id": "addcatform_handlepinmove",
+      "community": 1
+    },
+    {
+      "label": "tryGps()",
+      "file_type": "code",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L108",
+      "id": "addcatform_trygps",
+      "community": 1
+    },
+    {
+      "label": "enterStep2()",
+      "file_type": "code",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L131",
+      "id": "addcatform_enterstep2",
+      "community": 1
     },
     {
       "label": "handleFileChange()",
       "file_type": "code",
       "source_file": "components/AddCatForm.tsx",
-      "source_location": "L33",
+      "source_location": "L142",
       "id": "addcatform_handlefilechange",
-      "community": 6
+      "community": 1
     },
     {
       "label": "handlePhotoNext()",
       "file_type": "code",
       "source_file": "components/AddCatForm.tsx",
-      "source_location": "L39",
+      "source_location": "L149",
       "id": "addcatform_handlephotonext",
-      "community": 6
+      "community": 1
     },
     {
       "label": "handleSubmit()",
       "file_type": "code",
       "source_file": "components/AddCatForm.tsx",
-      "source_location": "L68",
+      "source_location": "L164",
       "id": "addcatform_handlesubmit",
-      "community": 6
+      "community": 1
     },
     {
       "label": "CommentForm.tsx",
@@ -273,7 +329,7 @@
       "source_file": "components/CommentForm.tsx",
       "source_location": "L1",
       "id": "commentform",
-      "community": 5
+      "community": 6
     },
     {
       "label": "handleSubmit()",
@@ -281,7 +337,7 @@
       "source_file": "components/CommentForm.tsx",
       "source_location": "L18",
       "id": "commentform_handlesubmit",
-      "community": 5
+      "community": 6
     },
     {
       "label": "ReportButton.tsx",
@@ -289,7 +345,7 @@
       "source_file": "components/ReportButton.tsx",
       "source_location": "L1",
       "id": "reportbutton",
-      "community": 8
+      "community": 0
     },
     {
       "label": "ReportButton()",
@@ -297,7 +353,7 @@
       "source_file": "components/ReportButton.tsx",
       "source_location": "L4",
       "id": "reportbutton_reportbutton",
-      "community": 8
+      "community": 0
     },
     {
       "label": "Map.tsx",
@@ -305,7 +361,7 @@
       "source_file": "components/Map.tsx",
       "source_location": "L1",
       "id": "map",
-      "community": 9
+      "community": 8
     },
     {
       "label": "Map()",
@@ -313,7 +369,7 @@
       "source_file": "components/Map.tsx",
       "source_location": "L8",
       "id": "map_map",
-      "community": 9
+      "community": 8
     },
     {
       "label": "geo.test.ts",
@@ -321,7 +377,7 @@
       "source_file": "__tests__/lib/geo.test.ts",
       "source_location": "L1",
       "id": "geo_test",
-      "community": 2
+      "community": 3
     },
     {
       "label": "cats.test.ts",
@@ -329,7 +385,7 @@
       "source_file": "__tests__/api/cats.test.ts",
       "source_location": "L1",
       "id": "cats_test",
-      "community": 2
+      "community": 3
     },
     {
       "label": "db.ts",
@@ -337,7 +393,7 @@
       "source_file": "lib/db.ts",
       "source_location": "L1",
       "id": "db",
-      "community": 1
+      "community": 2
     },
     {
       "label": "auth.ts",
@@ -345,7 +401,7 @@
       "source_file": "lib/auth.ts",
       "source_location": "L1",
       "id": "auth",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getSession()",
@@ -353,7 +409,7 @@
       "source_file": "lib/auth.ts",
       "source_location": "L15",
       "id": "auth_getsession",
-      "community": 1
+      "community": 2
     },
     {
       "label": "requireAuth()",
@@ -361,7 +417,7 @@
       "source_file": "lib/auth.ts",
       "source_location": "L19",
       "id": "auth_requireauth",
-      "community": 1
+      "community": 2
     },
     {
       "label": "geo.ts",
@@ -369,7 +425,7 @@
       "source_file": "lib/geo.ts",
       "source_location": "L1",
       "id": "geo",
-      "community": 2
+      "community": 3
     },
     {
       "label": "roundCoord()",
@@ -377,7 +433,7 @@
       "source_file": "lib/geo.ts",
       "source_location": "L3",
       "id": "geo_roundcoord",
-      "community": 2
+      "community": 3
     },
     {
       "label": "validateBbox()",
@@ -385,7 +441,7 @@
       "source_file": "lib/geo.ts",
       "source_location": "L8",
       "id": "geo_validatebbox",
-      "community": 2
+      "community": 3
     }
   ],
   "links": [
@@ -549,12 +605,12 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/signup/page.tsx",
-      "source_location": "L6",
+      "source_location": "L14",
       "weight": 1.0,
       "_src": "page",
-      "_tgt": "page_signuppage",
+      "_tgt": "page_handlesubmit",
       "source": "page",
-      "target": "page_signuppage",
+      "target": "page_handlesubmit",
       "confidence_score": 1.0
     },
     {
@@ -764,8 +820,80 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "components/LocationPicker.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_src": "locationpicker",
+      "_tgt": "locationpicker_locationpicker",
+      "source": "locationpicker",
+      "target": "locationpicker_locationpicker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "components/AddCatForm.tsx",
-      "source_location": "L33",
+      "source_location": "L87",
+      "weight": 1.0,
+      "_src": "addcatform",
+      "_tgt": "addcatform_setdraft",
+      "source": "addcatform",
+      "target": "addcatform_setdraft",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L95",
+      "weight": 1.0,
+      "_src": "addcatform",
+      "_tgt": "addcatform_goto",
+      "source": "addcatform",
+      "target": "addcatform_goto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L101",
+      "weight": 1.0,
+      "_src": "addcatform",
+      "_tgt": "addcatform_handlepinmove",
+      "source": "addcatform",
+      "target": "addcatform_handlepinmove",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L108",
+      "weight": 1.0,
+      "_src": "addcatform",
+      "_tgt": "addcatform_trygps",
+      "source": "addcatform",
+      "target": "addcatform_trygps",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L131",
+      "weight": 1.0,
+      "_src": "addcatform",
+      "_tgt": "addcatform_enterstep2",
+      "source": "addcatform",
+      "target": "addcatform_enterstep2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L142",
       "weight": 1.0,
       "_src": "addcatform",
       "_tgt": "addcatform_handlefilechange",
@@ -777,7 +905,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/AddCatForm.tsx",
-      "source_location": "L39",
+      "source_location": "L149",
       "weight": 1.0,
       "_src": "addcatform",
       "_tgt": "addcatform_handlephotonext",
@@ -789,12 +917,84 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/AddCatForm.tsx",
-      "source_location": "L68",
+      "source_location": "L164",
       "weight": 1.0,
       "_src": "addcatform",
       "_tgt": "addcatform_handlesubmit",
       "source": "addcatform",
       "target": "addcatform_handlesubmit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L96",
+      "weight": 1.0,
+      "_src": "addcatform_goto",
+      "_tgt": "addcatform_setdraft",
+      "source": "addcatform_setdraft",
+      "target": "addcatform_goto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L102",
+      "weight": 1.0,
+      "_src": "addcatform_handlepinmove",
+      "_tgt": "addcatform_setdraft",
+      "source": "addcatform_setdraft",
+      "target": "addcatform_handlepinmove",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L160",
+      "weight": 1.0,
+      "_src": "addcatform_handlephotonext",
+      "_tgt": "addcatform_setdraft",
+      "source": "addcatform_setdraft",
+      "target": "addcatform_handlephotonext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L132",
+      "weight": 1.0,
+      "_src": "addcatform_enterstep2",
+      "_tgt": "addcatform_goto",
+      "source": "addcatform_goto",
+      "target": "addcatform_enterstep2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L135",
+      "weight": 1.0,
+      "_src": "addcatform_enterstep2",
+      "_tgt": "addcatform_trygps",
+      "source": "addcatform_trygps",
+      "target": "addcatform_enterstep2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "components/AddCatForm.tsx",
+      "source_location": "L151",
+      "weight": 1.0,
+      "_src": "addcatform_handlephotonext",
+      "_tgt": "addcatform_enterstep2",
+      "source": "addcatform_enterstep2",
+      "target": "addcatform_handlephotonext",
       "confidence_score": 1.0
     },
     {
