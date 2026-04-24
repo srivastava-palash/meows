@@ -25,8 +25,7 @@ export default function LoginPage() {
       setError(d.error ?? 'Login failed')
       return
     }
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (

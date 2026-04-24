@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useCity } from '@/context/CityContext'
 
-export default function Navbar() {
+export default function Navbar({ initialUsername = null }: { initialUsername?: string | null }) {
   const router = useRouter()
   const { city } = useCity()
-  const [username, setUsername] = useState<string | null>(null)
+  const [username, setUsername] = useState<string | null>(initialUsername)
   const [catCount, setCatCount] = useState<number | null>(null)
 
   // Keep browser tab title in sync with the current city
@@ -16,8 +16,9 @@ export default function Navbar() {
   }, [city])
 
   useEffect(() => {
+    // Sync auth state on client (covers client-side navigations where initialUsername won't update)
     fetch('/api/auth/me').then(r => r.json()).then(d => {
-      if (d.username) setUsername(d.username)
+      setUsername(d.username ?? null)
     }).catch(() => {})
     fetch('/api/cats/count', { cache: 'no-store' }).then(r => r.json()).then(d => {
       if (d.count != null) setCatCount(d.count)

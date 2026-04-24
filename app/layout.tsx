@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import { CityProvider } from '@/context/CityContext'
+import { getSession } from '@/lib/auth'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,12 +15,15 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession()
+  const initialUsername = session.userId ? (session.username ?? null) : null
+
   return (
     <html lang="en">
       <body className={`${inter.className} bg-[#fffaf8]`}>
         <CityProvider>
-          <Navbar />
+          <Navbar initialUsername={initialUsername} />
           {children}
         </CityProvider>
       </body>
