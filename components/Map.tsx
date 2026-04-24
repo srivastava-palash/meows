@@ -335,11 +335,11 @@ export default function Map() {
         cityTimer = setTimeout(async () => {
           const zoom = map.getZoom()
           if (zoom < 8) {
-            setCity('the World')
+            setCityRef.current('the World')
           } else {
             const c = map.getCenter()
             const name = await getCityName(c.lat, c.lng)
-            setCity(name)
+            setCityRef.current(name)
           }
         }, 600) // 600ms debounce — snappy but avoids hammering Nominatim
       })
@@ -351,7 +351,7 @@ export default function Map() {
             map.setView([pos.coords.latitude, pos.coords.longitude], 13)
             // setView triggers moveend which will fetch pins — no explicit call needed
             const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
-            setCity(name)
+            setCityRef.current(name)
           },
           () => {/* silently fall back to Mumbai default */}
         )

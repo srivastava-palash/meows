@@ -34,6 +34,7 @@ function CatCard({ cat, onToggle, onDelete, deleting, highlighted = false }: {
       alignItems: 'center',
       gap: 14,
     }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={cat.thumbnail_url}
         alt=""
@@ -197,7 +198,7 @@ export default function AdminControls({
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: '0 0 4px', fontSize: 14, color: '#374151', lineHeight: 1.5 }}>
-                  "{c.text}"
+                  &ldquo;{c.text}&rdquo;
                 </p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: '#9ca3af' }}>
