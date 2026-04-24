@@ -66,6 +66,33 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   } catch { return null }
 }
 
+// ── NSFW guard (browser-only, lazily loaded on first photo pick) ───────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let nsfwModel: any = null
+
+async function checkNsfw(objectUrl: string): Promise<{ safe: boolean; reason?: string }> {
+  try {
+    if (!nsfwModel) {
+      await import('@tensorflow/tfjs')
+      const nsfwjs = await import('nsfwjs')
+      nsfwModel = await nsfwjs.load()
+    }
+    const img = new Image()
+    img.src = objectUrl
+    await img.decode()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const predictions: { className: string; probability: number }[] = await nsfwModel.classify(img)
+    const get = (cls: string) => predictions.find(p => p.className === cls)?.probability ?? 0
+    if (get('Porn') > 0.55 || get('Hentai') > 0.55 || get('Sexy') > 0.75) {
+      return { safe: false, reason: '🚫 This image looks inappropriate. Please use a photo of a cat or animal.' }
+    }
+    return { safe: true }
+  } catch (e) {
+    console.warn('NSFW check skipped (model unavailable):', e)
+    return { safe: true } // fail open — never block real users over a model error
+  }
+}
+
 export default function AddCatForm() {
   const router = useRouter()
 
@@ -75,6 +102,7 @@ export default function AddCatForm() {
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'detecting' | 'done' | 'unavailable'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(false)   // true while NSFW model runs
   const fileRef = useRef<HTMLInputElement>(null)    // gallery
   const cameraRef = useRef<HTMLInputElement>(null)  // direct camera
 
@@ -139,12 +167,23 @@ export default function AddCatForm() {
     }
   }
 
-  // Step 1: photo
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Step 1: photo — show preview immediately, then run NSFW check async
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const url = URL.createObjectURL(file)
     setPhoto(file)
-    setPreview(URL.createObjectURL(file))
+    setPreview(url)
+    setError(null)
+    setChecking(true)
+    const { safe, reason } = await checkNsfw(url)
+    setChecking(false)
+    if (!safe) {
+      setError(reason ?? 'Inappropriate image detected.')
+      setPhoto(null)
+      setPreview(null)
+      URL.revokeObjectURL(url)
+    }
   }
 
   async function handlePhotoNext() {
@@ -240,12 +279,15 @@ export default function AddCatForm() {
           {/* Gallery input — opens file picker / photo library */}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           {error && <p className="text-red-500 text-xs">{error}</p>}
+          {checking && (
+            <p className="text-xs text-gray-400 animate-pulse text-center">🔍 Checking image safety…</p>
+          )}
           <button
             onClick={handlePhotoNext}
-            disabled={loading || (!photo && !draft.upload)}
+            disabled={loading || checking || (!photo && !draft.upload)}
             className="w-full bg-[#ff6b35] text-white font-bold py-3 rounded-xl disabled:opacity-50"
           >
-            {loading ? 'Uploading…' : 'Next →'}
+            {loading ? 'Uploading…' : checking ? 'Checking…' : 'Next →'}
           </button>
         </div>
       )}
