@@ -2,11 +2,12 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { supabase } from '@/lib/db'
 import type { Cat, Comment } from '@/types'
-import CommentThread from '@/components/CommentThread'
-import CommentForm from '@/components/CommentForm'
+import CommentSection from '@/components/CommentSection'
 import ReportButton from '@/components/ReportButton'
 import UpvoteButton from '@/components/UpvoteButton'
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic' // always fetch fresh comments on every load
 
 interface Props { params: { id: string } }
 
@@ -108,15 +109,7 @@ export default async function CatDetailPage({ params }: Props) {
 
         <hr className="my-5 border-gray-100" />
 
-        {/* Comments */}
-        <h2 className="text-sm font-bold text-gray-900 mb-4">
-          💬 Community ({comments.length} comment{comments.length !== 1 ? 's' : ''})
-        </h2>
-        <CommentThread comments={comments} catId={cat.id} />
-
-        <hr className="my-5 border-gray-100" />
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Add a comment</h3>
-        <CommentForm catId={cat.id} />
+        <CommentSection catId={cat.id} initialComments={comments} />
       </div>
     </main>
   )

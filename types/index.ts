@@ -39,6 +39,7 @@ export interface Comment {
   parent_id: string | null
   is_hidden: boolean
   report_count: number
+  upvote_count: number
   created_at: string
   replies?: Comment[]
 }

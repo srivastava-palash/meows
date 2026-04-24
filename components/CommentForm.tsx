@@ -2,6 +2,22 @@
 import { useState } from 'react'
 import type { Comment } from '@/types'
 
+// localStorage key that tracks comment IDs posted by this browser
+const MY_COMMENTS_KEY = 'meows_my_comments'
+
+export function getMyCommentIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    return new Set(JSON.parse(localStorage.getItem(MY_COMMENTS_KEY) ?? '[]'))
+  } catch { return new Set() }
+}
+
+function saveMyCommentId(id: string) {
+  const ids = getMyCommentIds()
+  ids.add(id)
+  localStorage.setItem(MY_COMMENTS_KEY, JSON.stringify(Array.from(ids)))
+}
+
 interface Props {
   catId: string
   parentId?: string
@@ -35,6 +51,8 @@ export default function CommentForm({ catId, parentId, onSubmit, compact }: Prop
     }
 
     const comment: Comment = await res.json()
+    // Mark this comment as "mine" so the delete button shows up
+    saveMyCommentId(comment.id)
     setText('')
     setName('')
     onSubmit?.(comment)
@@ -47,7 +65,7 @@ export default function CommentForm({ catId, parentId, onSubmit, compact }: Prop
     padding: '10px 14px',
     fontSize: 14,
     fontFamily: 'inherit',
-    color: '#111827',           /* ← explicit dark text */
+    color: '#111827',
     background: '#ffffff',
     outline: 'none',
     boxSizing: 'border-box',
