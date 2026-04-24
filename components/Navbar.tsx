@@ -10,6 +10,11 @@ export default function Navbar() {
   const [username, setUsername] = useState<string | null>(null)
   const [catCount, setCatCount] = useState<number | null>(null)
 
+  // Keep browser tab title in sync with the current city
+  useEffect(() => {
+    document.title = `🐾 Meows of ${city}`
+  }, [city])
+
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       if (d.username) setUsername(d.username)
