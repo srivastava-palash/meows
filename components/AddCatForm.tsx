@@ -66,17 +66,33 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   } catch { return null }
 }
 
-// ── NSFW guard (browser-only, lazily loaded on first photo pick) ───────────────
+// ── NSFW guard (browser-only, loaded from CDN on first use) ───────────────────
+// We load via script tags instead of npm so webpack never bundles nsfwjs/tfjs
+// (their AMD model shards cause "Cannot statically analyse require(…,…)" errors)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let nsfwModel: any = null
 
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve()
+    const s = document.createElement('script')
+    s.src = src
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error(`Failed to load ${src}`))
+    document.head.appendChild(s)
+  })
+}
+
 async function checkNsfw(objectUrl: string): Promise<{ safe: boolean; reason?: string }> {
   try {
-    if (!nsfwModel) {
-      await import('@tensorflow/tfjs')
-      const nsfwjs = await import('nsfwjs')
-      nsfwModel = await nsfwjs.load()
-    }
+    // Lazy-load TF.js then nsfwjs from CDN (only on first photo pick)
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js')
+    await loadScript('https://cdn.jsdelivr.net/npm/nsfwjs@4.2.0/dist/nsfwjs.min.js')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nsfwjs = (window as any).nsfwjs
+    if (!nsfwjs) throw new Error('nsfwjs not available')
+    if (!nsfwModel) nsfwModel = await nsfwjs.load()
+
     const img = new Image()
     img.src = objectUrl
     await img.decode()
@@ -88,8 +104,8 @@ async function checkNsfw(objectUrl: string): Promise<{ safe: boolean; reason?: s
     }
     return { safe: true }
   } catch (e) {
-    console.warn('NSFW check skipped (model unavailable):', e)
-    return { safe: true } // fail open — never block real users over a model error
+    console.warn('NSFW check skipped (CDN unavailable):', e)
+    return { safe: true } // fail open — never block real users over a network error
   }
 }
 
