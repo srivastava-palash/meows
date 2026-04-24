@@ -95,6 +95,57 @@ export default function Map() {
   // Monotonic counter — stale fetch responses are discarded if a newer one started
   const fetchIdRef = useRef(0)
 
+  // ── Location search ───────────────────────────────────────────────
+  interface NominatimResult {
+    place_id: number
+    display_name: string
+    lat: string
+    lon: string
+  }
+  const [searchQuery, setSearchQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<NominatimResult[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  async function handleSearch(q: string) {
+    setSearchQuery(q)
+    clearTimeout(searchTimer.current)
+    if (q.trim().length < 2) { setSuggestions([]); return }
+    searchTimer.current = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const r = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        )
+        setSuggestions(await r.json())
+      } catch { /* ignore */ } finally {
+        setSearchLoading(false)
+      }
+    }, 400)
+  }
+
+  function selectPlace(result: NominatimResult) {
+    const lat = parseFloat(result.lat)
+    const lng = parseFloat(result.lon)
+    mapInstanceRef.current?.flyTo([lat, lng], 13)
+    // Derive a short label from the first part of display_name
+    setSearchQuery(result.display_name.split(',')[0])
+    setSuggestions([])
+  }
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSuggestions([])
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
   // Hydrate saved theme after mount
   useEffect(() => { setActiveTheme(getSavedTheme()) }, [])
 
@@ -348,10 +399,95 @@ export default function Map() {
     <div style={{ position: 'relative', height: 'calc(100vh - 44px)', width: '100%' }}>
       <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
 
-      {/* ── Sort toggle ────────────────────────────────────── */}
+      {/* ── Location search bar ──────────────────── */}
+      <div
+        ref={searchRef}
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1001,
+          width: 'min(340px, 90vw)',
+          fontFamily: 'sans-serif',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: 'white',
+          borderRadius: suggestions.length > 0 ? '12px 12px 0 0' : 12,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+          padding: '7px 12px',
+          gap: 6,
+        }}>
+          <span style={{ fontSize: 15, opacity: 0.5 }}>{searchLoading ? '⏳' : '🔍'}</span>
+          <input
+            value={searchQuery}
+            onChange={e => handleSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Escape' && setSuggestions([])}
+            placeholder="Search a city or place…"
+            style={{
+              border: 'none',
+              outline: 'none',
+              width: '100%',
+              fontSize: 13,
+              fontFamily: 'inherit',
+              background: 'transparent',
+              color: '#222',
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); setSuggestions([]) }}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#aaa', padding: 0 }}
+            >×</button>
+          )}
+        </div>
+
+        {/* Suggestions dropdown */}
+        {suggestions.length > 0 && (
+          <div style={{
+            background: 'white',
+            borderRadius: '0 0 12px 12px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+            overflow: 'hidden',
+          }}>
+            {suggestions.map((s, i) => (
+              <button
+                key={s.place_id}
+                onClick={() => selectPlace(s)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '9px 14px',
+                  border: 'none',
+                  borderTop: i > 0 ? '1px solid #f0f0f0' : 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: '#333',
+                  lineHeight: 1.4,
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#fff5f1')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+              >
+                <span style={{ fontWeight: 600 }}>{s.display_name.split(',')[0]}</span>
+                <span style={{ color: '#999', marginLeft: 4 }}>
+                  {s.display_name.split(',').slice(1, 3).join(',').trim()}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Sort toggle ────────────────────────────── */}
       <div style={{
         position: 'absolute',
-        top: 12,
+        top: 60,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1000,
