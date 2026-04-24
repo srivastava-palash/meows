@@ -37,3 +37,7 @@ next-env.d.ts
 
 # graphify
 graphify-out/*
+
+# local-only docs (spec + plan — keep private, not for GitHub)
+.superpowers/
+docs/
