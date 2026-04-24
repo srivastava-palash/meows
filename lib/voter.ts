@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import type { NextRequest } from 'next/server'
 import type { NextResponse } from 'next/server'
 
@@ -6,10 +7,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /**
  * Get the voter identity for this request.
- * Priority: HTTP-only cookie → X-Voter-Id header → IP fallback.
- * The cookie is set server-side (harder to clear accidentally) and the
- * header is sent by the client from localStorage (covers first request
- * before cookie round-trip completes).
+ * Priority: HTTP-only cookie → X-Voter-Id header → fresh server UUID.
+ *
+ * The cookie is stamped on every GET and POST response (see upvote/route.ts),
+ * so identity is locked in from the first page load — not just after first vote.
+ * This prevents re-voting when localStorage is cleared but the cookie persists.
  */
 export function getVoterId(req: NextRequest): string {
   const cookie = req.cookies.get(VOTER_COOKIE)?.value
@@ -18,12 +20,9 @@ export function getVoterId(req: NextRequest): string {
   const header = req.headers.get('x-voter-id')
   if (header && UUID_RE.test(header)) return header
 
-  // Last resort: IP (same-network users share this, but it's better than nothing)
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-    req.headers.get('x-real-ip') ??
-    '0.0.0.0'
-  )
+  // No existing identity → mint a fresh UUID.
+  // The caller MUST stamp this as a cookie in the response so the browser keeps it.
+  return randomUUID()
 }
 
 /**

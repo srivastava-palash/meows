@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth'
 import { getVoterId, setVoterCookie } from '@/lib/voter'
 
 // GET — check if caller has upvoted this cat (also returns current count for hydration)
+// Cookie is set here too so identity is locked in on first visit, not just after first vote
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -15,7 +16,10 @@ export async function GET(
     supabase.from('cats').select('upvote_count').eq('id', params.id).single(),
   ])
 
-  return NextResponse.json({ upvoted: !!vote, count: cat?.upvote_count ?? 0 })
+  const res = NextResponse.json({ upvoted: !!vote, count: cat?.upvote_count ?? 0 })
+  // Stamp the cookie on every GET so even first-time visitors get a persistent identity
+  setVoterCookie(res, voterId)
+  return res
 }
 
 // POST — toggle upvote
