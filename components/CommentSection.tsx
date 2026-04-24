@@ -1,6 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useEffect } from 'react'
 import type { Comment } from '@/types'
 import CommentThread from './CommentThread'
 import CommentForm from './CommentForm'
@@ -9,15 +8,26 @@ type SortMode = 'newest' | 'best'
 
 interface Props {
   catId: string
-  initialComments: Comment[]
+  initialComments: Comment[] // used as a fallback if fetch fails
+  isAdmin?: boolean
 }
 
-export default function CommentSection({ catId, initialComments }: Props) {
+export default function CommentSection({ catId, initialComments, isAdmin = false }: Props) {
   const [comments, setComments] = useState<Comment[]>(initialComments)
   const [sort, setSort] = useState<SortMode>('newest')
-  const router = useRouter()
+  const [loading, setLoading] = useState(true)
 
-  // Sort a copy — never mutate state directly
+  // Always fetch fresh client-side on mount — avoids server-side caching issues
+  useEffect(() => {
+    fetch(`/api/comments?cat_id=${catId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) setComments(data)
+      })
+      .catch(() => { /* keep initialComments on failure */ })
+      .finally(() => setLoading(false))
+  }, [catId])
+
   const sorted = useMemo(() => {
     const arr = [...comments]
     if (sort === 'best') arr.sort((a, b) => (b.upvote_count ?? 0) - (a.upvote_count ?? 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -27,12 +37,10 @@ export default function CommentSection({ catId, initialComments }: Props) {
 
   function handleNewComment(comment: Comment) {
     setComments(prev => [...prev, { ...comment, replies: [], upvote_count: 0 }])
-    router.refresh()
   }
 
   function handleDeleteComment(id: string) {
     setComments(prev => prev.filter(c => c.id !== id))
-    router.refresh()
   }
 
   function handleUpvoteComment(id: string, newCount: number) {
@@ -50,7 +58,7 @@ export default function CommentSection({ catId, initialComments }: Props) {
       {/* Header + sort toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827' }}>
-          💬 Community ({comments.length} comment{comments.length !== 1 ? 's' : ''})
+          💬 Community ({loading ? '…' : comments.length} comment{comments.length !== 1 ? 's' : ''})
         </h2>
         <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 999, padding: 3, gap: 2 }}>
           {(['newest', 'best'] as SortMode[]).map(s => (
@@ -70,17 +78,24 @@ export default function CommentSection({ catId, initialComments }: Props) {
         </div>
       </div>
 
-      <CommentThread
-        comments={sorted}
-        catId={catId}
-        onNewComment={handleNewComment}
-        onDeleteComment={handleDeleteComment}
-        onUpvoteComment={handleUpvoteComment}
-      />
-
-      <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #f3f4f6' }} />
+      {/* Add a comment — above the thread so it's always visible */}
       <h3 style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>Add a comment</h3>
       <CommentForm catId={catId} onSubmit={handleNewComment} />
+
+      <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #f3f4f6' }} />
+
+      {loading ? (
+        <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 16 }}>Loading comments…</p>
+      ) : (
+        <CommentThread
+          comments={sorted}
+          catId={catId}
+          isAdmin={isAdmin}
+          onNewComment={handleNewComment}
+          onDeleteComment={handleDeleteComment}
+          onUpvoteComment={handleUpvoteComment}
+        />
+      )}
     </>
   )
 }

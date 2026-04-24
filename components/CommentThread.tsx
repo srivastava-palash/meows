@@ -7,12 +7,13 @@ interface CommentItemProps {
   comment: Comment
   catId: string
   myIds: Set<string>
+  isAdmin: boolean
   onDelete: (id: string) => void
   onNewReply: (reply: Comment) => void
   onUpvote: (id: string, newCount: number) => void
 }
 
-function CommentItem({ comment, catId, myIds, onDelete, onNewReply, onUpvote }: CommentItemProps) {
+function CommentItem({ comment, catId, myIds, isAdmin, onDelete, onNewReply, onUpvote }: CommentItemProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [showReply, setShowReply] = useState(false)
   const [replies, setReplies] = useState<Comment[]>(comment.replies ?? [])
@@ -21,6 +22,7 @@ function CommentItem({ comment, catId, myIds, onDelete, onNewReply, onUpvote }: 
   const [upvoteCount, setUpvoteCount] = useState(comment.upvote_count ?? 0)
   const [upvoting, setUpvoting] = useState(false)
   const isOwn = myIds.has(comment.id)
+  const canDelete = isOwn || isAdmin
 
   // Fetch initial vote state
   useEffect(() => {
@@ -134,14 +136,14 @@ function CommentItem({ comment, catId, myIds, onDelete, onNewReply, onUpvote }: 
         </button>
 
 
-        {/* Delete (own only) */}
-        {isOwn && (
+        {/* Delete (own or admin) */}
+        {canDelete && (
           <button
             onClick={handleDelete}
             disabled={deleting}
             style={{ fontSize: 12, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', padding: 0, opacity: deleting ? 0.5 : 1 }}
           >
-            {deleting ? 'Deleting…' : '🗑 Delete'}
+            {deleting ? 'Deleting…' : 'Delete'}
           </button>
         )}
       </div>
@@ -162,6 +164,7 @@ function CommentItem({ comment, catId, myIds, onDelete, onNewReply, onUpvote }: 
               comment={reply}
               catId={catId}
               myIds={myIds}
+              isAdmin={isAdmin}
               onDelete={onDelete}
               onNewReply={onNewReply}
               onUpvote={onUpvote}
@@ -178,12 +181,13 @@ function CommentItem({ comment, catId, myIds, onDelete, onNewReply, onUpvote }: 
 interface Props {
   comments: Comment[]
   catId: string
+  isAdmin?: boolean
   onNewComment?: (comment: Comment) => void
   onDeleteComment?: (id: string) => void
   onUpvoteComment?: (id: string, newCount: number) => void
 }
 
-export default function CommentThread({ comments, catId, onNewComment, onDeleteComment, onUpvoteComment }: Props) {
+export default function CommentThread({ comments, catId, isAdmin = false, onNewComment, onDeleteComment, onUpvoteComment }: Props) {
   const [myIds, setMyIds] = useState<Set<string>>(new Set())
   useEffect(() => { setMyIds(getMyCommentIds()) }, [])
 
@@ -198,6 +202,7 @@ export default function CommentThread({ comments, catId, onNewComment, onDeleteC
           comment={c}
           catId={catId}
           myIds={myIds}
+          isAdmin={isAdmin}
           onDelete={onDeleteComment ?? (() => {})}
           onNewReply={onNewComment ?? (() => {})}
           onUpvote={onUpvoteComment ?? (() => {})}

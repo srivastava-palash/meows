@@ -1,13 +1,14 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { supabase } from '@/lib/db'
+import { getSession } from '@/lib/auth'
 import type { Cat, Comment } from '@/types'
 import CommentSection from '@/components/CommentSection'
 import ReportButton from '@/components/ReportButton'
 import UpvoteButton from '@/components/UpvoteButton'
 import Link from 'next/link'
 
-export const dynamic = 'force-dynamic' // always fetch fresh comments on every load
+export const dynamic = 'force-dynamic'
 
 interface Props { params: { id: string } }
 
@@ -59,6 +60,8 @@ export default async function CatDetailPage({ params }: Props) {
 
   if (!cat) notFound()
 
+  const session = await getSession()
+  const isAdmin = !!session.userId
   const comments = await getComments(params.id)
 
   return (
@@ -109,7 +112,7 @@ export default async function CatDetailPage({ params }: Props) {
 
         <hr className="my-5 border-gray-100" />
 
-        <CommentSection catId={cat.id} initialComments={comments} />
+        <CommentSection catId={cat.id} initialComments={comments} isAdmin={isAdmin} />
       </div>
     </main>
   )
