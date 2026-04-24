@@ -6,6 +6,7 @@ export interface CatPin {
   name: string | null
   location_name: string | null
   upvote_count: number
+  created_at: string
 }
 
 export interface Cat {

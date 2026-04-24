@@ -76,6 +76,25 @@ async function getCityName(lat: number, lng: number): Promise<string> {
   }
 }
 
+// Small helper — reads city from context to label the popup
+function AreaLabel({ mode }: { mode: 'recent' | 'loved' }) {
+  const { city } = useCity()
+  const label = mode === 'recent' ? 'Most Recent' : 'Most Loved'
+  return (
+    <div style={{
+      padding: '7px 14px',
+      borderBottom: '1px solid #f3f4f6',
+      fontSize: 11,
+      fontWeight: 700,
+      color: '#ff6b35',
+      letterSpacing: '0.03em',
+      textTransform: 'uppercase',
+    }}>
+      {label} in {city ?? 'this area'}
+    </div>
+  )
+}
+
 export default function Map() {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null)
@@ -94,6 +113,49 @@ export default function Map() {
   useEffect(() => { setCityRef.current = setCity }, [setCity])
   // Monotonic counter — stale fetch responses are discarded if a newer one started
   const fetchIdRef = useRef(0)
+
+  // ── Sort quick-access popup ──────────────────────────────────────
+  const [sortPopup, setSortPopup] = useState<'recent' | 'loved' | null>(null)
+  const [popupCats, setPopupCats] = useState<import('@/types').CatPin[]>([])
+  const [popupLoading, setPopupLoading] = useState(false)
+  const sortToggleRef = useRef<HTMLDivElement>(null)
+
+  async function openSortPopup(mode: 'recent' | 'loved') {
+    // Toggle: clicking the same active mode closes the popup
+    if (sortPopup === mode) { setSortPopup(null); return }
+    setSortPopup(mode)
+    setPopupLoading(true)
+    try {
+      // Use the current map viewport — popup shows top cats in this area
+      const map = mapInstanceRef.current
+      if (!map) return
+      const bounds = map.getBounds()
+      const sw = bounds.getSouthWest()
+      const ne = bounds.getNorthEast()
+      // Clamp to valid bbox limits
+      const swLat = Math.max(sw.lat, -90)
+      const swLng = Math.max(sw.lng, -180)
+      const neLat = Math.min(ne.lat, 90)
+      const neLng = Math.min(ne.lng, 180)
+      const res = await fetch(
+        `/api/cats?swLat=${swLat}&swLng=${swLng}&neLat=${neLat}&neLng=${neLng}&sort=${mode}`
+      )
+      if (res.ok) setPopupCats((await res.json() as import('@/types').CatPin[]).slice(0, 5))
+    } catch { /* ignore */ } finally {
+      setPopupLoading(false)
+    }
+  }
+
+  // Close popup on click outside the toggle+popup area
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (sortToggleRef.current && !sortToggleRef.current.contains(e.target as Node)) {
+        setSortPopup(null)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
 
   // ── Location search ───────────────────────────────────────────────
   interface NominatimResult {
@@ -377,6 +439,7 @@ export default function Map() {
     if (mapInstanceRef.current) {
       fetchAndRenderPins(mapInstanceRef.current, newSort)
     }
+    openSortPopup(newSort)
   }
 
   // Switch tile layer when theme changes
@@ -484,39 +547,123 @@ export default function Map() {
         )}
       </div>
 
-      {/* ── Sort toggle ────────────────────────────── */}
-      <div style={{
-        position: 'absolute',
-        top: 60,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1000,
-        display: 'flex',
-        background: 'white',
-        borderRadius: 999,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
-        overflow: 'hidden',
-        fontFamily: 'sans-serif',
-      }}>
-        {(['recent', 'loved'] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => changeSort(s)}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: sort === s ? 700 : 500,
-              border: 'none',
-              cursor: 'pointer',
-              background: sort === s ? '#ff6b35' : 'transparent',
-              color: sort === s ? 'white' : '#555',
-              transition: 'all 0.15s',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {s === 'recent' ? '🕐 Recent' : '❤️ Most Loved'}
-          </button>
-        ))}
+      {/* ── Sort toggle + quick-access popup ────────────────── */}
+      <div
+        ref={sortToggleRef}
+        style={{
+          position: 'absolute',
+          top: 60,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          fontFamily: 'sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: 'min(320px, 88vw)',
+        }}
+      >
+        {/* Toggle buttons */}
+        <div style={{
+          display: 'flex',
+          background: 'white',
+          borderRadius: sortPopup ? '12px 12px 0 0' : 999,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+          overflow: 'hidden',
+          width: '100%',
+        }}>
+          {(['recent', 'loved'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => changeSort(s)}
+              style={{
+                flex: 1,
+                padding: '7px 14px',
+                fontSize: 12,
+                fontWeight: sort === s ? 700 : 500,
+                border: 'none',
+                cursor: 'pointer',
+                background: sort === s ? '#ff6b35' : 'transparent',
+                color: sort === s ? 'white' : '#555',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {s === 'recent' ? '🕐 Recent' : '❤️ Most Loved'}
+            </button>
+          ))}
+        </div>
+
+        {/* Quick-access dropdown */}
+        {sortPopup && (
+          <div style={{
+            width: '100%',
+            background: 'white',
+            borderRadius: '0 0 14px 14px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+            overflow: 'hidden',
+          }}>
+            {/* Area label */}
+            <AreaLabel mode={sortPopup} />
+            {popupLoading ? (
+              <div style={{ padding: '10px 16px', fontSize: 12, color: '#aaa', textAlign: 'center' }}>
+                Loading…
+              </div>
+            ) : popupCats.length === 0 ? (
+              <div style={{ padding: '10px 16px', fontSize: 12, color: '#aaa', textAlign: 'center' }}>
+                No cats in this area yet — pan the map!
+              </div>
+            ) : (
+              popupCats.map((cat, i) => (
+                <a
+                  key={cat.id}
+                  href={`/cats/${cat.id}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 14px',
+                    borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#fff5f1')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  {/* Rank number */}
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#ff6b35', width: 16, flexShrink: 0, textAlign: 'center' }}>
+                    {i + 1}
+                  </span>
+                  {/* Thumbnail */}
+                  <img
+                    src={cat.thumbnail_url}
+                    alt=""
+                    style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+                  />
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cat.name ?? 'Unknown cat'}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cat.location_name ?? ''}
+                    </div>
+                  </div>
+                  {/* Metric */}
+                  <span style={{ fontSize: 11, color: sortPopup === 'loved' ? '#ff6b35' : '#9ca3af', flexShrink: 0, fontWeight: sortPopup === 'loved' ? 700 : 400 }}>
+                    {sortPopup === 'loved'
+                      ? `♥ ${cat.upvote_count ?? 0}`
+                      : new Date(cat.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </a>
+              ))
+            )}
+            <div style={{ borderTop: '1px solid #f3f4f6', padding: '8px 14px', textAlign: 'center' }}>
+              <span style={{ fontSize: 11, color: '#aaa' }}>click to open full story</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Map theme picker ──────────────────────────────── */}
