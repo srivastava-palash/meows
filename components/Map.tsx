@@ -61,14 +61,16 @@ export default function Map() {
   const clusterRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tileLayerRef = useRef<any>(null)
+  const sortRef = useRef<'recent' | 'loved'>('recent') // mutable ref so moveend always reads latest
 
   const [activeTheme, setActiveTheme] = useState<ThemeId>('soft')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [sort, setSort] = useState<'recent' | 'loved'>('recent')
 
   // Hydrate saved theme after mount
   useEffect(() => { setActiveTheme(getSavedTheme()) }, [])
 
-  const fetchAndRenderPins = useCallback(async (map: import('leaflet').Map) => {
+  const fetchAndRenderPins = useCallback(async (map: import('leaflet').Map, sortBy: 'recent' | 'loved' = 'recent') => {
     const bounds = map.getBounds()
     const sw = bounds.getSouthWest()
     const ne = bounds.getNorthEast()
@@ -78,6 +80,7 @@ export default function Map() {
       swLng: String(sw.lng),
       neLat: String(ne.lat),
       neLng: String(ne.lng),
+      sort: sortBy,
     })
 
     const res = await fetch(`/api/cats?${params}`)
@@ -108,6 +111,7 @@ export default function Map() {
             display:block;background:#ff6b35;color:white;text-align:center;
             padding:6px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;
           ">See full story →</a>
+          <div style="color:#e05a2b;font-size:11px;font-weight:600;margin-top:6px;text-align:center;">❤️ ${pin.upvote_count ?? 0} loves</div>
         </div>
       `)
       clusterRef.current.addLayer(marker)
@@ -178,10 +182,11 @@ export default function Map() {
       let timer: ReturnType<typeof setTimeout>
       map.on('moveend', () => {
         clearTimeout(timer)
-        timer = setTimeout(() => fetchAndRenderPins(map), 300)
+        // Read sort from closure-captured ref so we always use latest value
+        timer = setTimeout(() => fetchAndRenderPins(map, sortRef.current), 300)
       })
 
-      await fetchAndRenderPins(map)
+      await fetchAndRenderPins(map, 'recent')
     }
 
     init()
@@ -193,6 +198,15 @@ export default function Map() {
       tileLayerRef.current = null
     }
   }, [fetchAndRenderPins])
+
+  // Change sort — update ref (for moveend) + state (for UI) + refetch
+  function changeSort(newSort: 'recent' | 'loved') {
+    sortRef.current = newSort
+    setSort(newSort)
+    if (mapInstanceRef.current) {
+      fetchAndRenderPins(mapInstanceRef.current, newSort)
+    }
+  }
 
   // Switch tile layer when theme changes
   function applyTheme(id: ThemeId) {
@@ -213,6 +227,41 @@ export default function Map() {
   return (
     <div style={{ position: 'relative', height: 'calc(100vh - 44px)', width: '100%' }}>
       <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+
+      {/* ── Sort toggle ────────────────────────────────────── */}
+      <div style={{
+        position: 'absolute',
+        top: 12,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000,
+        display: 'flex',
+        background: 'white',
+        borderRadius: 999,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+        overflow: 'hidden',
+        fontFamily: 'sans-serif',
+      }}>
+        {(['recent', 'loved'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => changeSort(s)}
+            style={{
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: sort === s ? 700 : 500,
+              border: 'none',
+              cursor: 'pointer',
+              background: sort === s ? '#ff6b35' : 'transparent',
+              color: sort === s ? 'white' : '#555',
+              transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {s === 'recent' ? '🕐 Recent' : '❤️ Most Loved'}
+          </button>
+        ))}
+      </div>
 
       {/* ── Map theme picker ──────────────────────────────── */}
       <div style={{

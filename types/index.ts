@@ -5,6 +5,7 @@ export interface CatPin {
   lng: number
   name: string | null
   location_name: string | null
+  upvote_count: number
 }
 
 export interface Cat {
@@ -23,6 +24,7 @@ export interface Cat {
   is_approved: boolean
   is_hidden: boolean
   report_count: number
+  upvote_count: number
   created_at: string
   updated_at: string
 }

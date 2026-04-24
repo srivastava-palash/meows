@@ -5,6 +5,7 @@ import type { Cat, Comment } from '@/types'
 import CommentThread from '@/components/CommentThread'
 import CommentForm from '@/components/CommentForm'
 import ReportButton from '@/components/ReportButton'
+import UpvoteButton from '@/components/UpvoteButton'
 import Link from 'next/link'
 
 interface Props { params: { id: string } }
@@ -99,8 +100,9 @@ export default async function CatDetailPage({ params }: Props) {
           </blockquote>
         )}
 
-        {/* Report link */}
-        <div className="mb-4">
+        {/* Upvote + Report */}
+        <div className="flex items-center justify-between mb-4">
+          <UpvoteButton catId={cat.id} initialCount={cat.upvote_count ?? 0} />
           <ReportButton id={cat.id} type="cat" />
         </div>
 

@@ -5,7 +5,7 @@ import { getSession } from '@/lib/auth'
 import type { CatPin } from '@/types'
 
 export const runtime = 'nodejs'
-export const revalidate = 30 // 30s edge cache
+export const revalidate = 0
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -20,11 +20,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid bounding box parameters' }, { status: 400 })
   }
 
+  const sort_by = searchParams.get('sort') === 'loved' ? 'loved' : 'recent'
+
   const { data, error } = await supabase.rpc('cats_in_bbox', {
     sw_lat: bbox.swLat,
     sw_lng: bbox.swLng,
     ne_lat: bbox.neLat,
     ne_lng: bbox.neLng,
+    sort_by,
   })
 
   if (error) return NextResponse.json({ error: 'Query failed' }, { status: 500 })
