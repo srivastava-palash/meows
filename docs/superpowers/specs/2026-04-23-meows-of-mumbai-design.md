@@ -36,6 +36,7 @@ A community map website where anyone can add photos of Mumbai's stray cats with 
 | id | uuid | Primary key |
 | username | text | Unique, chosen at signup |
 | password_hash | text | bcrypt hash — never store plaintext |
+| email | text | Optional, unique — used only for password reset. Never displayed publicly. |
 | created_at | timestamptz | Auto |
 
 ### `cats` (primary entity — one row per cat entry)
@@ -90,9 +91,15 @@ Each row is one cat post. A post always has a photo and location. Name and story
 ## Pages
 
 ### `/signup` and `/login`
-- **Signup:** Choose a username + password. No email field. API route hashes password with bcrypt and inserts into `users`. Session cookie set via `iron-session`.
-- **Login:** Username + password → bcrypt compare → session cookie.
+- **Signup:** Choose a username + password. Optional email field (unique) — shown with a warning: "Without an email you won't be able to reset your password later". Email is never displayed publicly. API route hashes password with bcrypt and inserts into `users`.
+- **Login:** Username + password → bcrypt compare → session cookie. "Forgot password?" link visible.
 - Both redirect to `/` on success.
+
+### `/reset-password` — Password Reset (no email sent)
+- User enters username + email. If both match a record in `users`, they are shown a new-password form directly on the portal.
+- No email is sent — the email address is a private recovery key only.
+- If the match fails: generic error ("Username and email don't match") — never reveal whether the username or email exists individually.
+- After successful reset: session is set and user is redirected to `/`.
 
 ### `/profile` — My Contributions (logged-in only)
 - Lists all cats the user has added (thumbnails, date, location)
@@ -151,7 +158,9 @@ The detail page adapts: if there's no story, it simply doesn't render the story 
 ### Optional Accounts
 Everything — adding cats, posting comments — works without an account. Accounts are opt-in.
 
-**Auth approach:** Custom `users` table with bcrypt-hashed passwords. `iron-session` stores a signed, encrypted session cookie (httpOnly, Secure). No email involved — no password reset for MVP (users can create a new account if they forget).
+**Auth approach:** Custom `users` table with bcrypt-hashed passwords. `iron-session` stores a signed, encrypted session cookie (httpOnly, Secure). No email involved in login — email is an optional private recovery key stored in `users.email`.
+
+**Password reset:** Username + email must both match → user sets a new password directly on the portal. No email is sent. Never reveal whether a username or email exists individually in error messages.
 
 **When logged in:** Navbar shows username. Comments and cats attributed to account. `/profile` lists contributions.
 
@@ -216,7 +225,7 @@ Photos uploaded to Supabase Storage via a Next.js API route. `sharp` generates t
 
 ## Out of Scope (for now)
 
-- Password reset / account recovery (create a new account if forgotten)
+- Password reset / account recovery (no email server needed — see `/reset-password`)
 - Push notifications
 - Multi-city support (Mumbai first, designed to expand)
 - Likes / reactions on cats or comments

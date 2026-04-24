@@ -4,7 +4,7 @@ import { supabase } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
-  const { username, password } = await req.json()
+  const { username, password, email } = await req.json()
 
   if (!username || !password) {
     return NextResponse.json({ error: 'Username and password required' }, { status: 400 })
@@ -19,16 +19,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
   }
 
+  // Validate email format if provided
+  const emailValue = email?.trim() || null
+  if (emailValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+  }
+
   const password_hash = await bcrypt.hash(password, 10)
 
   const { data, error } = await supabase
     .from('users')
-    .insert({ username, password_hash })
+    .insert({ username, password_hash, email: emailValue?.toLowerCase() ?? null })
     .select('id, username')
     .single()
 
   if (error) {
     if (error.code === '23505') {
+      if (error.message.includes('email')) {
+        return NextResponse.json({ error: 'Email already registered to another account' }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Username already taken' }, { status: 409 })
     }
     return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })

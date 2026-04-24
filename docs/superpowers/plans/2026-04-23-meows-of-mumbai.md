@@ -2515,3 +2515,53 @@ git commit -m "feat: complete Meows of Mumbai MVP"
 **Type consistency:** All components use types from `types/index.ts`. `CatPin` used in Map and API. `Cat` used in detail page. `Comment` used in thread. `UploadResult` used in AddCatForm and upload route.
 
 **No placeholders:** All steps include complete code.
+
+---
+
+## Task 20: Email-Based Password Reset
+
+**Files:**
+- Create: `supabase/migrations/002_add_email.sql`
+- Modify: `app/api/auth/signup/route.ts`
+- Create: `app/api/auth/reset-password/route.ts`
+- Create: `app/reset-password/page.tsx`
+- Modify: `app/signup/page.tsx`
+- Modify: `app/login/page.tsx`
+
+> Spec updated: `users.email` is optional, unique, never displayed. Password reset: username + email must match → set new password on portal directly (no email sent).
+
+- [x] **Step 1: Add `email` column to `users`**
+
+Run `supabase/migrations/002_add_email.sql` in Supabase SQL Editor:
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
+```
+
+- [x] **Step 2: Update signup API to accept optional email**
+
+`app/api/auth/signup/route.ts` — accepts `email`, validates format, lowercases, stores as nullable unique.
+
+- [x] **Step 3: Create `app/api/auth/reset-password/route.ts`**
+
+POST: username + email + newPassword → verify match → bcrypt hash → update → set session.
+Generic error if match fails (never reveal which field is wrong).
+
+- [x] **Step 4: Create `app/reset-password/page.tsx`**
+
+2-stage UI: (1) enter username + email (client-validated), (2) enter + confirm new password.
+Real API call happens on stage 2. On mismatch, returns to stage 1.
+
+- [x] **Step 5: Update `app/signup/page.tsx`**
+
+Added optional email field. Shows amber warning when blank. Shows green confirmation when filled. Email never displayed publicly.
+
+- [x] **Step 6: Update `app/login/page.tsx`**
+
+Added "Forgot password?" link to `/reset-password`.
+
+- [x] **Step 7: Commit**
+
+```bash
+git add supabase/migrations/002_add_email.sql app/api/auth/reset-password/ app/reset-password/ app/signup/page.tsx app/login/page.tsx app/api/auth/signup/route.ts
+git commit -m "feat: add email-based password reset (no email server needed)"
+```

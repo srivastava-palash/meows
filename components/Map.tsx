@@ -67,6 +67,9 @@ export default function Map() {
       await import('leaflet.markercluster/dist/MarkerCluster.css')
       await import('leaflet.markercluster/dist/MarkerCluster.Default.css')
 
+      // Guard: if another effect run already initialized this container, bail out
+      if (mapInstanceRef.current) return
+
       const map = L.map(mapRef.current!, {
         center: [19.076, 72.8777], // Mumbai
         zoom: 13,
@@ -124,6 +127,12 @@ export default function Map() {
     }
 
     init()
+
+    return () => {
+      mapInstanceRef.current?.remove()
+      mapInstanceRef.current = null
+      clusterRef.current = null
+    }
   }, [fetchAndRenderPins])
 
   return <div ref={mapRef} style={{ height: 'calc(100vh - 44px)', width: '100%' }} />

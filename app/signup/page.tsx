@@ -7,6 +7,7 @@ export default function SignupPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -17,7 +18,7 @@ export default function SignupPage() {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, email: email.trim() || undefined }),
     })
     setLoading(false)
     if (!res.ok) {
@@ -32,7 +33,7 @@ export default function SignupPage() {
   return (
     <main className="max-w-sm mx-auto px-4 py-12">
       <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Create account</h1>
-      <p className="text-sm text-gray-400 mb-6">Username and password only — no email needed.</p>
+      <p className="text-sm text-gray-400 mb-6">Username and password only — no email needed to use the site.</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="text-xs font-semibold text-gray-600 mb-1 block">Username</label>
@@ -55,6 +56,32 @@ export default function SignupPage() {
             className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
           />
         </div>
+
+        {/* Optional email — recovery key only, never shown publicly */}
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">
+            Email <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="only used to reset your password"
+            autoComplete="email"
+            className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
+          />
+          {!email.trim() ? (
+            <p className="text-amber-600 text-xs mt-1.5 flex items-start gap-1">
+              <span>⚠️</span>
+              <span>Without an email you won&apos;t be able to reset your password if you forget it.</span>
+            </p>
+          ) : (
+            <p className="text-green-600 text-xs mt-1.5">
+              ✓ Your email is only used for password recovery — never shown publicly.
+            </p>
+          )}
+        </div>
+
         {error && <p className="text-red-500 text-xs">{error}</p>}
         <button
           type="submit"

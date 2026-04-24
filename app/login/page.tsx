@@ -64,6 +64,9 @@ export default function LoginPage() {
       <p className="text-center text-sm text-gray-400 mt-4">
         No account? <Link href="/signup" className="text-[#ff6b35] font-semibold">Sign up</Link>
       </p>
+      <p className="text-center text-sm text-gray-400 mt-2">
+        <Link href="/reset-password" className="text-[#ff6b35]">Forgot password?</Link>
+      </p>
     </main>
   )
 }
