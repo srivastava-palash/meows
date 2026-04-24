@@ -77,7 +77,7 @@ async function getCityName(lat: number, lng: number): Promise<string> {
 }
 
 // Small helper — reads city from context to label the popup
-function AreaLabel({ mode }: { mode: 'recent' | 'loved' }) {
+function AreaLabel({ mode, isGlobal }: { mode: 'recent' | 'loved'; isGlobal: boolean }) {
   const { city } = useCity()
   const label = mode === 'recent' ? 'Most Recent' : 'Most Loved'
   return (
@@ -86,11 +86,13 @@ function AreaLabel({ mode }: { mode: 'recent' | 'loved' }) {
       borderBottom: '1px solid #f3f4f6',
       fontSize: 11,
       fontWeight: 700,
-      color: '#ff6b35',
+      color: isGlobal ? '#9ca3af' : '#ff6b35',
       letterSpacing: '0.03em',
       textTransform: 'uppercase',
     }}>
-      {label} in {city ?? 'this area'}
+      {isGlobal
+        ? `🌍 Nothing nearby — ${label} worldwide`
+        : `${label} in ${city ?? 'this area'}`}
     </div>
   )
 }
@@ -118,29 +120,39 @@ export default function Map() {
   const [sortPopup, setSortPopup] = useState<'recent' | 'loved' | null>(null)
   const [popupCats, setPopupCats] = useState<import('@/types').CatPin[]>([])
   const [popupLoading, setPopupLoading] = useState(false)
+  const [popupIsGlobal, setPopupIsGlobal] = useState(false)
   const sortToggleRef = useRef<HTMLDivElement>(null)
 
   async function openSortPopup(mode: 'recent' | 'loved') {
-    // Toggle: clicking the same active mode closes the popup
     if (sortPopup === mode) { setSortPopup(null); return }
     setSortPopup(mode)
     setPopupLoading(true)
+    setPopupIsGlobal(false)
     try {
-      // Use the current map viewport — popup shows top cats in this area
       const map = mapInstanceRef.current
       if (!map) return
       const bounds = map.getBounds()
       const sw = bounds.getSouthWest()
       const ne = bounds.getNorthEast()
-      // Clamp to valid bbox limits
-      const swLat = Math.max(sw.lat, -90)
-      const swLng = Math.max(sw.lng, -180)
-      const neLat = Math.min(ne.lat, 90)
-      const neLng = Math.min(ne.lng, 180)
-      const res = await fetch(
+      const swLat = Math.max(sw.lat, -90), swLng = Math.max(sw.lng, -180)
+      const neLat = Math.min(ne.lat, 90),  neLng = Math.min(ne.lng, 180)
+
+      // 1️⃣ Try viewport first
+      const local = await fetch(
         `/api/cats?swLat=${swLat}&swLng=${swLng}&neLat=${neLat}&neLng=${neLng}&sort=${mode}`
       )
-      if (res.ok) setPopupCats((await res.json() as import('@/types').CatPin[]).slice(0, 5))
+      if (local.ok) {
+        const localCats = (await local.json() as import('@/types').CatPin[]).slice(0, 5)
+        if (localCats.length > 0) {
+          setPopupCats(localCats)
+          return
+        }
+      }
+
+      // 2️⃣ Nothing nearby — fall back to world-wide
+      setPopupIsGlobal(true)
+      const world = await fetch(`/api/cats?swLat=-85&swLng=-179&neLat=85&neLng=179&sort=${mode}`)
+      if (world.ok) setPopupCats((await world.json() as import('@/types').CatPin[]).slice(0, 5))
     } catch { /* ignore */ } finally {
       setPopupLoading(false)
     }
@@ -604,7 +616,7 @@ export default function Map() {
             overflow: 'hidden',
           }}>
             {/* Area label */}
-            <AreaLabel mode={sortPopup} />
+            <AreaLabel mode={sortPopup} isGlobal={popupIsGlobal} />
             {popupLoading ? (
               <div style={{ padding: '10px 16px', fontSize: 12, color: '#aaa', textAlign: 'center' }}>
                 Loading…
