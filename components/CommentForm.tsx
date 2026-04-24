@@ -40,28 +40,64 @@ export default function CommentForm({ catId, parentId, onSubmit, compact }: Prop
     onSubmit?.(comment)
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    border: '1.5px solid #e5e7eb',
+    borderRadius: 10,
+    padding: '10px 14px',
+    fontSize: 14,
+    fontFamily: 'inherit',
+    color: '#111827',           /* ← explicit dark text */
+    background: '#ffffff',
+    outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.15s',
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {!compact && (
         <input
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Your name (optional)"
-          className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
+          style={inputStyle}
+          onFocus={e => (e.currentTarget.style.borderColor = '#ff6b35')}
+          onBlur={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
         />
       )}
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder={compact ? 'Write a reply…' : 'Share what you know about this cat…'}
-        className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2 text-sm bg-[#fffaf8] h-20 resize-none focus:outline-none focus:border-[#ff6b35]"
         required
+        style={{
+          ...inputStyle,
+          height: compact ? 68 : 88,
+          resize: 'none',
+          lineHeight: 1.5,
+        }}
+        onFocus={e => (e.currentTarget.style.borderColor = '#ff6b35')}
+        onBlur={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
       />
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && (
+        <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>⚠️ {error}</p>
+      )}
       <button
         type="submit"
-        disabled={loading}
-        className="w-full bg-[#ff6b35] text-white text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+        disabled={loading || !text.trim()}
+        style={{
+          background: loading || !text.trim() ? '#ffd4bc' : '#ff6b35',
+          color: 'white',
+          border: 'none',
+          borderRadius: 10,
+          padding: '10px 0',
+          fontSize: 13,
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          cursor: loading || !text.trim() ? 'not-allowed' : 'pointer',
+          transition: 'background 0.15s',
+        }}
       >
         {loading ? 'Posting…' : compact ? 'Reply' : 'Post comment'}
       </button>
