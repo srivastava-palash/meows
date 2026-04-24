@@ -75,7 +75,8 @@ export default function AddCatForm() {
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'detecting' | 'done' | 'unavailable'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)    // gallery
+  const cameraRef = useRef<HTMLInputElement>(null)  // direct camera
 
   // Hydrate from sessionStorage after mount
   useEffect(() => {
@@ -204,20 +205,39 @@ export default function AddCatForm() {
         <div className="space-y-4">
           <h2 className="text-lg font-extrabold text-gray-900">Add a cat photo</h2>
           <p className="text-sm text-gray-500">Show us who you found!</p>
-          <div
-            onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-[#ffb99a] rounded-xl p-10 text-center bg-[#fff8f5] cursor-pointer"
-          >
-            {displayPreview ? (
-              <img src={displayPreview} alt="preview" className="w-full rounded-lg object-cover max-h-48" />
-            ) : (
-              <>
-                <div className="text-4xl mb-2">📷</div>
-                <p className="text-sm font-semibold text-[#ff6b35]">Take or choose a photo</p>
-                <p className="text-xs text-gray-400 mt-1">tap to open camera or gallery</p>
-              </>
-            )}
-          </div>
+          {/* Preview — tapping re-opens gallery */}
+          {displayPreview ? (
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-[#ffb99a] rounded-xl overflow-hidden cursor-pointer"
+            >
+              <img src={displayPreview} alt="preview" className="w-full object-cover max-h-52" />
+              <p className="text-xs text-center text-gray-400 py-1">tap to change</p>
+            </div>
+          ) : (
+            /* Two-button picker */
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="flex flex-col items-center gap-2 border-2 border-dashed border-[#ffb99a] rounded-xl py-8 bg-[#fff8f5] cursor-pointer"
+              >
+                <span className="text-4xl">📷</span>
+                <span className="text-sm font-semibold text-[#ff6b35]">Camera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex flex-col items-center gap-2 border-2 border-dashed border-[#ffb99a] rounded-xl py-8 bg-[#fff8f5] cursor-pointer"
+              >
+                <span className="text-4xl">🖼️</span>
+                <span className="text-sm font-semibold text-[#ff6b35]">Gallery</span>
+              </button>
+            </div>
+          )}
+          {/* Camera input — triggers native camera directly */}
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+          {/* Gallery input — opens file picker / photo library */}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           {error && <p className="text-red-500 text-xs">{error}</p>}
           <button
