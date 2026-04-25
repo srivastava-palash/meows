@@ -8,6 +8,8 @@ import ReportButton from '@/components/ReportButton'
 import UpvoteButton from '@/components/UpvoteButton'
 import Link from 'next/link'
 import PhotoGallery from '@/components/PhotoGallery'
+import EditLocationButton from '@/components/EditLocationButton'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,6 +76,12 @@ export default async function CatDetailPage({ params }: Props) {
 
   const session = await getSession()
   const isAdmin = !!session.userId
+  const cookieStore = await cookies()
+  const isAdminCookie = cookieStore.get('admin-auth')?.value === process.env.ADMIN_PASSWORD
+  const canEditLocation =
+    isAdminCookie ||
+    (session.userId != null &&
+      (cat.user_id === null || cat.user_id === session.userId))
   const comments = await getComments(params.id)
   const allPhotos: string[] = [
     cat.photo_url,
@@ -119,6 +127,18 @@ export default async function CatDetailPage({ params }: Props) {
           <UpvoteButton catId={cat.id} initialCount={cat.upvote_count ?? 0} />
           <ReportButton id={cat.id} type="cat" />
         </div>
+
+        {/* Move pin — visible to owner / admin */}
+        {canEditLocation && (
+          <div className="mb-4">
+            <EditLocationButton
+              catId={cat.id}
+              initialLat={cat.lat}
+              initialLng={cat.lng}
+              initialLocationName={cat.location_name}
+            />
+          </div>
+        )}
 
         <hr className="my-5 border-gray-100" />
 

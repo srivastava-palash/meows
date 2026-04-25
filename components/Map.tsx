@@ -110,10 +110,12 @@ export default function Map() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [sort, setSort] = useState<'recent' | 'loved'>('recent')
   const [locating, setLocating] = useState(false)
-  const { setCity, flyToCoords, setFlyToCoords } = useCity()
-  // Ref so fetchAndRenderPins (memoised with []) can always call latest setCity
+  const { setCity, flyToCoords, setFlyToCoords, setMapCenter } = useCity()
+  // Refs so fetchAndRenderPins (memoised with []) can always call latest setCity/setMapCenter
   const setCityRef = useRef(setCity)
+  const setMapCenterRef = useRef(setMapCenter)
   useEffect(() => { setCityRef.current = setCity }, [setCity])
+  useEffect(() => { setMapCenterRef.current = setMapCenter }, [setMapCenter])
   // Monotonic counter — stale fetch responses are discarded if a newer one started
   const fetchIdRef = useRef(0)
 
@@ -347,6 +349,10 @@ export default function Map() {
       let cityTimer: ReturnType<typeof setTimeout>
       let pinsTimer: ReturnType<typeof setTimeout>
       map.on('moveend', () => {
+        // Update map center immediately — used by AddCatForm for default pin position
+        const c = map.getCenter()
+        setMapCenterRef.current({ lat: c.lat, lng: c.lng })
+
         clearTimeout(pinsTimer)
         clearTimeout(cityTimer)
         pinsTimer = setTimeout(() => fetchAndRenderPins(map, sortRef.current), 300)
@@ -355,11 +361,11 @@ export default function Map() {
           if (zoom < 8) {
             setCityRef.current('the World')
           } else {
-            const c = map.getCenter()
-            const name = await getCityName(c.lat, c.lng)
+            const cn = map.getCenter()
+            const name = await getCityName(cn.lat, cn.lng)
             setCityRef.current(name)
           }
-        }, 600) // 600ms debounce — snappy but avoids hammering Nominatim
+        }, 600)
       })
 
       // Try GPS to set initial center (HTTPS only)
@@ -367,11 +373,11 @@ export default function Map() {
         navigator.geolocation.getCurrentPosition(
           async pos => {
             map.setView([pos.coords.latitude, pos.coords.longitude], 13)
-            // setView triggers moveend which will fetch pins — no explicit call needed
+            setMapCenterRef.current({ lat: pos.coords.latitude, lng: pos.coords.longitude })
             const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
             setCityRef.current(name)
           },
-          () => {/* silently fall back to Mumbai default */}
+          () => {/* silently fall back to world default */}
         )
       }
 

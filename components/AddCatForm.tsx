@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { UploadResult } from '@/types'
+import { useCity } from '@/context/CityContext'
 
 // LocationPicker must be client-only (Leaflet needs window)
 const LocationPicker = dynamic(() => import('./LocationPicker'), {
@@ -28,28 +29,28 @@ interface PersistedState {
 }
 
 const SESSION_KEY = 'meows-add-cat-draft'
-const MUMBAI = { lat: 19.076, lng: 72.8777 }
+const MUMBAI = { lat: 19.076, lng: 72.8777 }  // fallback only
 const MAX_EXTRA = 4   // up to 4 additional photos (5 total)
 
-function loadDraft(): PersistedState {
-  if (typeof window === 'undefined') return defaultDraft()
+function loadDraft(fallbackCenter: { lat: number; lng: number }): PersistedState {
+  if (typeof window === 'undefined') return defaultDraft(fallbackCenter)
   try {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedState
       return {
         ...parsed,
-        lat: parsed.lat ?? MUMBAI.lat,
-        lng: parsed.lng ?? MUMBAI.lng,
+        lat: parsed.lat ?? fallbackCenter.lat,
+        lng: parsed.lng ?? fallbackCenter.lng,
         additionalUploads: parsed.additionalUploads ?? [],
       }
     }
   } catch {}
-  return defaultDraft()
+  return defaultDraft(fallbackCenter)
 }
 
-function defaultDraft(): PersistedState {
-  return { step: 1, upload: null, additionalUploads: [], lat: MUMBAI.lat, lng: MUMBAI.lng, locationName: null, name: '', story: '' }
+function defaultDraft(center = MUMBAI): PersistedState {
+  return { step: 1, upload: null, additionalUploads: [], lat: center.lat, lng: center.lng, locationName: null, name: '', story: '' }
 }
 
 function saveDraft(s: PersistedState) {
@@ -110,6 +111,7 @@ async function checkNsfw(objectUrl: string): Promise<{ safe: boolean; reason?: s
 
 export default function AddCatForm() {
   const router = useRouter()
+  const { mapCenter } = useCity()
 
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -125,12 +127,14 @@ export default function AddCatForm() {
   const cameraRef = useRef<HTMLInputElement>(null)
   const extraFileRef = useRef<HTMLInputElement>(null)
 
-  // Hydrate from sessionStorage after mount
+  // Hydrate from sessionStorage after mount, seeding position from current map center
   useEffect(() => {
-    const saved = loadDraft()
+    const saved = loadDraft(mapCenter)
+    // If no draft exists (fresh form), use current map center as starting location
     setDraftRaw(saved)
     if (saved.upload) setPreview(saved.upload.thumbnail_url)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // run once on mount — mapCenter at mount time is the seed
 
   function setDraft(updater: (prev: PersistedState) => PersistedState) {
     setDraftRaw(prev => {
