@@ -356,8 +356,7 @@ export default function Map() {
         zoomControl: false,  // disable default top-left, we'll add it at bottomright
       })
 
-      // Zoom controls — bottom-right, above the My Location button
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
+      // zoomControl: false — rendered as React below for full layout control
 
       const tile = L.tileLayer(theme.url, {
         attribution: theme.attribution,
@@ -770,34 +769,79 @@ export default function Map() {
           <span style={{ fontSize: 9, opacity: 0.5 }}>{pickerOpen ? '▼' : '▲'}</span>
         </button>
       </div>
-      {/* ── My Location button — vertically centred next to zoom +/- ─── */}
-      <button
-        onClick={handleLocate}
-        title="Go to my location"
-        style={{
-          position: 'absolute',
-          bottom: 24,          // centers on the 64px zoom block that sits at bottom:10
-          right: 54,           // clears 32px zoom width + 10px Leaflet margin + 8px gap
-          zIndex: 1000,
-          background: 'white',
-          border: 'none',
-          borderRadius: 10,
-          padding: '8px 12px',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: locating ? 'wait' : 'pointer',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
-          color: '#333',
+      {/* ── Bottom-right controls: My Location + Zoom ───────────────── */}
+      <div style={{
+        position: 'absolute',
+        bottom: '1rem',
+        right: '0.75rem',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: '0.5rem',
+      }}>
+        {/* My Location */}
+        <button
+          onClick={handleLocate}
+          title="Go to my location"
+          style={{
+            background: 'white',
+            border: 'none',
+            borderRadius: 10,
+            padding: '0.5rem 0.75rem',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: locating ? 'wait' : 'pointer',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+            color: '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            opacity: locating ? 0.7 : 1,
+            transition: 'opacity 0.2s',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {locating ? '⏳' : '📍'} My Location
+        </button>
+
+        {/* Zoom +/- */}
+        <div style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          opacity: locating ? 0.7 : 1,
-          transition: 'opacity 0.2s',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {locating ? '⏳' : '📍'} My Location
-      </button>
+          flexDirection: 'column',
+          borderRadius: 10,
+          overflow: 'hidden',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+        }}>
+          {['+', '−'].map((sym, i) => (
+            <button
+              key={sym}
+              onClick={() => {
+                const map = mapInstanceRef.current
+                if (!map) return
+                sym === '+' ? map.zoomIn() : map.zoomOut()
+              }}
+              style={{
+                width: '2.2rem',
+                height: '2.2rem',
+                background: 'white',
+                border: 'none',
+                borderTop: i === 1 ? '1px solid #e5e7eb' : 'none',
+                fontSize: 18,
+                fontWeight: 400,
+                cursor: 'pointer',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              {sym}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
