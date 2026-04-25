@@ -45,3 +45,10 @@ html {
   }
 }
 
+/* ── Zoom buttons: hide on touch screens, show on mouse/trackpad ── */
+@media (pointer: coarse) {
+  .zoom-controls { display: none; }
+}
+@media (pointer: fine) {
+  .zoom-controls { display: flex; }
+}
