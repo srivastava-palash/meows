@@ -352,7 +352,11 @@ export default function Map() {
       const map = L.map(mapRef.current!, {
         center: [20, 0],  // world-centred default
         zoom: 3,
+        zoomControl: false,  // disable default top-left, we'll add it at bottomright
       })
+
+      // Zoom controls — bottom-right, above the My Location button
+      L.control.zoom({ position: 'bottomright' }).addTo(map)
 
       const tile = L.tileLayer(theme.url, {
         attribution: theme.attribution,
