@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useCity } from '@/context/CityContext'
 
 interface NominatimResult {
@@ -9,6 +10,14 @@ interface NominatimResult {
   display_name: string
   lat: string
   lon: string
+}
+
+interface TopCat {
+  id: string
+  name: string | null
+  thumbnail_url: string
+  location_name: string | null
+  upvote_count: number
 }
 
 // ── Inline SVG icons — no emoji, no icon library needed ──────────
@@ -53,6 +62,27 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
   const searchTimer = useRef<ReturnType<typeof setTimeout>>()
   const searchRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Top cats state ────────────────────────────────────────
+  const [topOpen, setTopOpen] = useState(false)
+  const [topCats, setTopCats] = useState<TopCat[]>([])
+  const [topLoading, setTopLoading] = useState(false)
+  const topFetchedRef = useRef(false)
+  const catCountBtnRef = useRef<HTMLButtonElement>(null)
+  const portalRef = useRef<HTMLDivElement>(null)
+  const [popoverPos, setPopoverPos] = useState<{ top: number; right: number } | null>(null)
+
+  // Close portal on outside click — exclude both the trigger button AND the portal div
+  useEffect(() => {
+    if (!topOpen) return
+    function onDown(e: MouseEvent) {
+      const inBtn = catCountBtnRef.current?.contains(e.target as Node)
+      const inPortal = portalRef.current?.contains(e.target as Node)
+      if (!inBtn && !inPortal) setTopOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [topOpen])
 
   useEffect(() => {
     document.title = `Meows of ${city}`
@@ -108,6 +138,31 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
     await fetch('/api/auth/logout', { method: 'POST' })
     setUsername(null)
     router.refresh()
+  }
+
+  async function openTop() {
+    const next = !topOpen
+    setTopOpen(next)
+    if (next) {
+      setSearchOpen(false)
+      setSuggestions([])
+      setSearchQuery('')
+      // Compute popover position — top from button, right always hugs viewport edge
+      if (catCountBtnRef.current) {
+        const r = catCountBtnRef.current.getBoundingClientRect()
+        setPopoverPos({ top: r.bottom + 8, right: 12 })
+      }
+      if (!topFetchedRef.current) {
+        topFetchedRef.current = true
+        setTopLoading(true)
+        try {
+          const res = await fetch('/api/cats/top?limit=10')
+          if (res.ok) setTopCats(await res.json())
+        } catch { /* ignore */ } finally {
+          setTopLoading(false)
+        }
+      }
+    }
   }
 
   // ── Brand click: go home + fly to current location ────────────
@@ -194,29 +249,39 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
         {/* ── Right actions ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
 
-          {/* Cat count badge */}
+          {/* Cat count badge — portal popover on click */}
           {catCount != null && (
-            <span
+            <button
+              ref={catCountBtnRef}
+              onClick={openTop}
+              title="Top 10 most loved cats worldwide"
               style={{
-                background: 'rgba(0,0,0,0.15)',
-                color: 'rgba(255,255,255,0.85)',
+                background: topOpen ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)',
+                color: 'rgba(255,255,255,0.9)',
                 fontSize: 11,
                 fontWeight: 600,
-                padding: '3px 8px',
+                padding: '4px 9px',
                 borderRadius: 999,
                 letterSpacing: '0.2px',
                 whiteSpace: 'nowrap',
+                border: '1px solid rgba(255,255,255,0.2)',
+                cursor: 'pointer',
+                transition: 'background 0.15s',
               }}
             >
               {catCount}<span className="hidden sm:inline"> cats</span>
-            </span>
+            </button>
           )}
 
-          {/* Search button — no wrapper div needed, ref is on nav */}
+          {/* Search button */}
           <button
             onClick={() => {
-              setSearchOpen(o => !o)
-              if (!searchOpen) setTimeout(() => searchInputRef.current?.focus(), 50)
+              const next = !searchOpen
+              setSearchOpen(next)
+              if (next) {
+                setTopOpen(false)  // close top cats if open
+                setTimeout(() => searchInputRef.current?.focus(), 50)
+              }
             }}
             style={{
               display: 'flex',
@@ -328,8 +393,81 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
           )}
         </div>
       </div>
+      {/* Portal: top-cats panel — renders at document.body, floats above everything */}
+      {topOpen && popoverPos && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: popoverPos.top,
+            right: popoverPos.right,
+            width: 'min(320px, calc(100vw - 24px))',
+            background: 'white',
+            borderRadius: 14,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
+            zIndex: 99999,
+            overflow: 'hidden',
+            fontFamily: "'Inter','Segoe UI',system-ui,sans-serif",
+          }}
+          ref={portalRef}
+        >
+          {/* Caret */}
+          <div style={{
+            position: 'absolute', top: -6, right: 18,
+            width: 12, height: 12,
+            background: 'white',
+            transform: 'rotate(45deg)',
+            boxShadow: '-2px -2px 5px rgba(0,0,0,0.07)',
+            borderRadius: 2,
+          }} />
 
-      {/* ── Search drawer — second row inside sticky nav, no fixed/absolute needed ── */}
+          {/* Header */}
+          <div style={{
+            padding: '14px 16px 10px',
+            borderBottom: '1px solid #f0f0f0',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#1a1a1a' }}>❤️ Most loved cats</span>
+            <span style={{ fontSize: 11, color: '#bbb' }}>worldwide</span>
+          </div>
+
+          {topLoading && (
+            <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: '#bbb' }}>Loading…</div>
+          )}
+
+          {!topLoading && topCats.map((cat, i) => (
+            <a
+              key={cat.id}
+              href={`/cats/${cat.id}`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 16px',
+                borderTop: i > 0 ? '1px solid #f7f7f7' : 'none',
+                textDecoration: 'none', color: 'inherit',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#fef6f2')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+              onClick={() => setTopOpen(false)}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, color: i < 3 ? '#ff6b35' : '#ccc', width: 22, textAlign: 'center', flexShrink: 0 }}>#{i+1}</span>
+              <img src={cat.thumbnail_url} alt={cat.name ?? 'cat'} style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {cat.name ?? 'Unknown cat'}
+                </div>
+                {cat.location_name && <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{cat.location_name}</div>}
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', flexShrink: 0 }}>♥ {cat.upvote_count ?? 0}</span>
+            </a>
+          ))}
+
+          {!topLoading && topCats.length === 0 && (
+            <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: '#bbb' }}>No cats yet — be the first!</div>
+          )}
+        </div>,
+        document.body
+      )}
+
       {searchOpen && (
         <div style={{ padding: '0 16px 12px' }}>
           <div style={{

@@ -6,68 +6,109 @@ interface Props {
   alt: string
 }
 
+// Shared blurred-backdrop frame used by both single and carousel views.
+// Renders the same image twice:
+//   1. Behind: scaled to fill, heavily blurred — fills letterbox space with photo colours
+//   2. In front: object-contain — shows the full image without any cropping
+function BlurFrame({
+  src,
+  alt,
+  children,
+}: {
+  src: string
+  alt: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', maxHeight: '70dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Blurred backdrop — same image, fills the frame */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          filter: 'blur(22px) brightness(0.55) saturate(1.3)',
+          transform: 'scale(1.08)', // avoids blur edge bleed
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      />
+      {/* Sharp foreground image */}
+      <img
+        src={src}
+        alt={alt}
+        style={{
+          position: 'relative',
+          display: 'block',
+          maxWidth: '100%',
+          maxHeight: '70dvh',
+          objectFit: 'contain',
+          zIndex: 1,
+        }}
+      />
+      {/* Overlay slots (arrows, badge, etc.) */}
+      {children}
+    </div>
+  )
+}
+
 export default function PhotoGallery({ photos, alt }: Props) {
   const [current, setCurrent] = useState(0)
 
-  // Single photo — plain image, no chrome
+  // Single photo — no chrome, just the blur-backdrop frame
   if (photos.length <= 1) {
-    return (
-      <img
-        src={photos[0]}
-        alt={alt}
-        className="w-full max-h-80 object-cover"
-      />
-    )
+    return <BlurFrame src={photos[0]} alt={alt} />
   }
 
   const prev = () => setCurrent(i => (i - 1 + photos.length) % photos.length)
   const next = () => setCurrent(i => (i + 1) % photos.length)
 
   return (
-    <div style={{ position: 'relative', background: '#111' }}>
-      {/* Main image */}
-      <div style={{ position: 'relative', overflow: 'hidden', maxHeight: 320 }}>
-        <img
-          src={photos[current]}
-          alt={`${alt} — photo ${current + 1} of ${photos.length}`}
-          style={{ width: '100%', maxHeight: 320, objectFit: 'cover', display: 'block', transition: 'opacity 0.2s' }}
-        />
-
-        {/* Prev / Next arrows */}
+    <div>
+      {/* Main image with blur backdrop */}
+      <BlurFrame src={photos[current]} alt={`${alt} — photo ${current + 1} of ${photos.length}`}>
+        {/* Prev arrow */}
         <button
           onClick={prev}
           aria-label="Previous photo"
           style={{
             position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%',
-            width: 36, height: 36, color: 'white', fontSize: 18, cursor: 'pointer',
+            background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%',
+            width: 36, height: 36, color: 'white', fontSize: 20, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(6px)', zIndex: 2,
           }}
         >‹</button>
+
+        {/* Next arrow */}
         <button
           onClick={next}
           aria-label="Next photo"
           style={{
             position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-            background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%',
-            width: 36, height: 36, color: 'white', fontSize: 18, cursor: 'pointer',
+            background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%',
+            width: 36, height: 36, color: 'white', fontSize: 20, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(6px)', zIndex: 2,
           }}
         >›</button>
 
         {/* Counter badge */}
         <span style={{
-          position: 'absolute', bottom: 10, right: 12,
-          background: 'rgba(0,0,0,0.5)', color: 'white',
+          position: 'absolute', bottom: 10, right: 12, zIndex: 2,
+          background: 'rgba(0,0,0,0.45)', color: 'white',
           fontSize: 11, fontWeight: 600,
           padding: '3px 8px', borderRadius: 999,
           backdropFilter: 'blur(4px)',
         }}>
           {current + 1} / {photos.length}
         </span>
-      </div>
+      </BlurFrame>
 
       {/* Dot indicators */}
       <div style={{
