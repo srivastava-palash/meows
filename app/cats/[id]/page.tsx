@@ -2,11 +2,12 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { supabase } from '@/lib/db'
 import { getSession } from '@/lib/auth'
-import type { Cat, Comment } from '@/types'
+import type { Cat, CatPhoto, Comment } from '@/types'
 import CommentSection from '@/components/CommentSection'
 import ReportButton from '@/components/ReportButton'
 import UpvoteButton from '@/components/UpvoteButton'
 import Link from 'next/link'
+import PhotoGallery from '@/components/PhotoGallery'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,18 +52,33 @@ async function getComments(catId: string): Promise<Comment[]> {
 }
 
 export default async function CatDetailPage({ params }: Props) {
-  const { data: cat } = await supabase
-    .from('cats')
-    .select('*')
-    .eq('id', params.id)
-    .eq('is_hidden', false)
-    .single() as { data: Cat | null }
+  // Fetch cat + additional photos in parallel
+  const [catResult, extrasResult] = await Promise.all([
+    supabase
+      .from('cats')
+      .select('*')
+      .eq('id', params.id)
+      .eq('is_hidden', false)
+      .single(),
+    supabase
+      .from('cat_photos')
+      .select('*')
+      .eq('cat_id', params.id)
+      .order('display_order', { ascending: true }),
+  ])
+
+  const cat = catResult.data as Cat | null
+  const extraPhotos = extrasResult.data as CatPhoto[] | null
 
   if (!cat) notFound()
 
   const session = await getSession()
   const isAdmin = !!session.userId
   const comments = await getComments(params.id)
+  const allPhotos: string[] = [
+    cat.photo_url,
+    ...((extraPhotos ?? []).map(p => p.photo_url)),
+  ]
 
   return (
     <main className="max-w-lg mx-auto pb-16">
@@ -70,14 +86,8 @@ export default async function CatDetailPage({ params }: Props) {
         ← Back to map
       </Link>
 
-      {/* Photo */}
-      <img
-        src={cat.photo_url}
-        alt={cat.name ?? 'A stray cat'}
-        width={cat.photo_width}
-        height={cat.photo_height}
-        className="w-full max-h-80 object-cover"
-      />
+      {/* Photo gallery — shows carousel if multiple, single image if only one */}
+      <PhotoGallery photos={allPhotos} alt={cat.name ?? 'A stray cat'} />
 
       <div className="px-4 pt-4">
         {/* Name + meta */}

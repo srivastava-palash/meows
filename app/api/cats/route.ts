@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/db'
 import { validateBbox, roundCoord } from '@/lib/geo'
 import { getSession } from '@/lib/auth'
-import type { CatPin } from '@/types'
+import type { CatPin, UploadResult } from '@/types'
 
 export const runtime = 'nodejs'
 export const revalidate = 0
@@ -43,7 +43,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { photo_url, thumbnail_url, photo_width, photo_height, lat, lng, location_name, name, story, last_seen_at } = body
+  const {
+    photo_url, thumbnail_url, photo_width, photo_height,
+    lat, lng, location_name, name, story, last_seen_at,
+    additional_photos,
+  } = body
 
   if (!photo_url || !thumbnail_url || lat == null || lng == null) {
     return NextResponse.json({ error: 'photo_url, thumbnail_url, lat, and lng are required' }, { status: 400 })
@@ -72,6 +76,20 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: 'Failed to save cat' }, { status: 500 })
+
+  // Insert additional photos if provided
+  if (Array.isArray(additional_photos) && additional_photos.length > 0) {
+    const extras = additional_photos.map((p: UploadResult, i: number) => ({
+      cat_id: data.id,
+      photo_url: p.photo_url,
+      thumbnail_url: p.thumbnail_url,
+      photo_width: p.photo_width ?? 0,
+      photo_height: p.photo_height ?? 0,
+      display_order: i + 1,
+    }))
+    await supabase.from('cat_photos').insert(extras)
+    // Non-fatal — main cat already saved
+  }
 
   return NextResponse.json({ id: data.id }, { status: 201 })
 }

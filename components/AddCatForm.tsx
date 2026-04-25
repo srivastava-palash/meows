@@ -19,6 +19,7 @@ type Step = 1 | 2 | 3
 interface PersistedState {
   step: Step
   upload: UploadResult | null
+  additionalUploads: UploadResult[]   // extra photos already uploaded
   lat: number
   lng: number
   locationName: string | null
@@ -28,6 +29,7 @@ interface PersistedState {
 
 const SESSION_KEY = 'meows-add-cat-draft'
 const MUMBAI = { lat: 19.076, lng: 72.8777 }
+const MAX_EXTRA = 4   // up to 4 additional photos (5 total)
 
 function loadDraft(): PersistedState {
   if (typeof window === 'undefined') return defaultDraft()
@@ -35,11 +37,11 @@ function loadDraft(): PersistedState {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedState
-      // Guard against stale drafts from old code where lat/lng were nullable
       return {
         ...parsed,
         lat: parsed.lat ?? MUMBAI.lat,
         lng: parsed.lng ?? MUMBAI.lng,
+        additionalUploads: parsed.additionalUploads ?? [],
       }
     }
   } catch {}
@@ -47,7 +49,7 @@ function loadDraft(): PersistedState {
 }
 
 function defaultDraft(): PersistedState {
-  return { step: 1, upload: null, lat: MUMBAI.lat, lng: MUMBAI.lng, locationName: null, name: '', story: '' }
+  return { step: 1, upload: null, additionalUploads: [], lat: MUMBAI.lat, lng: MUMBAI.lng, locationName: null, name: '', story: '' }
 }
 
 function saveDraft(s: PersistedState) {
@@ -66,9 +68,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   } catch { return null }
 }
 
-// ── NSFW guard (browser-only, loaded from CDN on first use) ───────────────────
-// We load via script tags instead of npm so webpack never bundles nsfwjs/tfjs
-// (their AMD model shards cause "Cannot statically analyse require(…,…)" errors)
+// ── NSFW guard ───────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let nsfwModel: any = null
 
@@ -85,7 +85,6 @@ function loadScript(src: string): Promise<void> {
 
 async function checkNsfw(objectUrl: string): Promise<{ safe: boolean; reason?: string }> {
   try {
-    // Lazy-load TF.js then nsfwjs from CDN (only on first photo pick)
     await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js')
     await loadScript('https://cdn.jsdelivr.net/npm/nsfwjs@4.2.0/dist/nsfwjs.min.js')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,7 +104,7 @@ async function checkNsfw(objectUrl: string): Promise<{ safe: boolean; reason?: s
     return { safe: true }
   } catch (e) {
     console.warn('NSFW check skipped (CDN unavailable):', e)
-    return { safe: true } // fail open — never block real users over a network error
+    return { safe: true }
   }
 }
 
@@ -114,13 +113,17 @@ export default function AddCatForm() {
 
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [extraPhotos, setExtraPhotos] = useState<File[]>([])
+  const [extraPreviews, setExtraPreviews] = useState<string[]>([])
   const [draft, setDraftRaw] = useState<PersistedState>(defaultDraft)
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'detecting' | 'done' | 'unavailable'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [checking, setChecking] = useState(false)   // true while NSFW model runs
-  const fileRef = useRef<HTMLInputElement>(null)    // gallery
-  const cameraRef = useRef<HTMLInputElement>(null)  // direct camera
+  const [checking, setChecking] = useState(false)
+
+  const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const extraFileRef = useRef<HTMLInputElement>(null)
 
   // Hydrate from sessionStorage after mount
   useEffect(() => {
@@ -142,23 +145,15 @@ export default function AddCatForm() {
     setError(null)
   }
 
-  // Called when user drags the pin
   async function handlePinMove(lat: number, lng: number) {
     setDraft(prev => ({ ...prev, lat, lng }))
     const name = await reverseGeocode(lat, lng)
     setDraft(prev => ({ ...prev, locationName: name }))
   }
 
-  // GPS — only works on secure context (https or localhost)
   async function tryGps() {
-    if (!navigator.geolocation) {
-      setGpsStatus('unavailable')
-      return
-    }
-    if (!window.isSecureContext) {
-      setGpsStatus('unavailable')
-      return
-    }
+    if (!navigator.geolocation) { setGpsStatus('unavailable'); return }
+    if (!window.isSecureContext) { setGpsStatus('unavailable'); return }
     setGpsStatus('detecting')
     navigator.geolocation.getCurrentPosition(
       async pos => {
@@ -172,7 +167,6 @@ export default function AddCatForm() {
     )
   }
 
-  // On entering step 2: always auto-try GPS (works on HTTPS; fails fast on HTTP → shows Find me button)
   function enterStep2() {
     goTo(2)
     setGpsStatus('idle')
@@ -183,7 +177,7 @@ export default function AddCatForm() {
     }
   }
 
-  // Step 1: photo — show preview immediately, then run NSFW check async
+  // Primary photo
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -202,19 +196,73 @@ export default function AddCatForm() {
     }
   }
 
+  // Extra photos (up to MAX_EXTRA)
+  async function handleExtraFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    const alreadyHave = extraPhotos.length + (draft.additionalUploads?.length ?? 0)
+    const slots = MAX_EXTRA - alreadyHave
+    const toAdd = files.slice(0, slots)
+    // Show previews immediately
+    const urls = toAdd.map(f => URL.createObjectURL(f))
+    setExtraPhotos(prev => [...prev, ...toAdd])
+    setExtraPreviews(prev => [...prev, ...urls])
+    // Reset input so same file can be re-added
+    e.target.value = ''
+  }
+
+  function removeExtraPhoto(i: number) {
+    URL.revokeObjectURL(extraPreviews[i])
+    setExtraPhotos(prev => prev.filter((_, idx) => idx !== i))
+    setExtraPreviews(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function removePersistedExtra(i: number) {
+    setDraft(prev => ({
+      ...prev,
+      additionalUploads: prev.additionalUploads.filter((_, idx) => idx !== i),
+    }))
+  }
+
+  async function uploadFile(file: File): Promise<UploadResult | null> {
+    const fd = new FormData()
+    fd.append('photo', file)
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    if (!res.ok) return null
+    return res.json()
+  }
+
   async function handlePhotoNext() {
     if (!photo && !draft.upload) { setError('Please select a photo'); return }
-    if (draft.upload && !photo) { enterStep2(); return } // already uploaded, skip re-upload
     setLoading(true)
     setError(null)
-    const fd = new FormData()
-    fd.append('photo', photo!)
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+
+    // Upload primary if new file selected
+    let primaryUpload = draft.upload
+    if (photo) {
+      const result = await uploadFile(photo)
+      if (!result) { setLoading(false); setError('Upload failed. Try again.'); return }
+      primaryUpload = result
+      setDraft(prev => ({ ...prev, upload: result }))
+    }
+
+    // Upload any pending extra photos
+    if (extraPhotos.length > 0) {
+      const results: UploadResult[] = []
+      for (const file of extraPhotos) {
+        const result = await uploadFile(file)
+        if (result) results.push(result)
+      }
+      setDraft(prev => ({
+        ...prev,
+        additionalUploads: [...(prev.additionalUploads ?? []), ...results],
+      }))
+      setExtraPhotos([])
+      setExtraPreviews(prev => { prev.forEach(u => URL.revokeObjectURL(u)); return [] })
+    }
+
     setLoading(false)
-    if (!res.ok) { setError('Upload failed. Try again.'); return }
-    const upload: UploadResult = await res.json()
-    setDraft(prev => ({ ...prev, upload }))
-    enterStep2()
+    if (primaryUpload) enterStep2()
   }
 
   async function handleSubmit() {
@@ -232,6 +280,7 @@ export default function AddCatForm() {
         name: draft.name || null,
         story: draft.story || null,
         last_seen_at: null,
+        additional_photos: draft.additionalUploads ?? [],
       }),
     })
     setLoading(false)
@@ -244,6 +293,8 @@ export default function AddCatForm() {
   const progress = ['', 'Photo', 'Location', 'Details']
   const displayPreview = preview ?? draft.upload?.thumbnail_url ?? null
   const isSecure = typeof window !== 'undefined' && window.isSecureContext
+  const totalExtras = extraPhotos.length + (draft.additionalUploads?.length ?? 0)
+  const canAddMore = totalExtras < MAX_EXTRA && !!displayPreview
 
   return (
     <div className="max-w-sm mx-auto px-4 py-6">
@@ -258,19 +309,19 @@ export default function AddCatForm() {
       {/* ── Step 1: Photo ─────────────────────────────────── */}
       {draft.step === 1 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-extrabold text-gray-900">Add a cat photo</h2>
-          <p className="text-sm text-gray-500">Show us who you found!</p>
-          {/* Preview — tapping re-opens gallery */}
+          <h2 className="text-lg font-extrabold text-gray-900">Add cat photos</h2>
+          <p className="text-sm text-gray-500">Add up to 5 photos. The first one will be the main photo.</p>
+
+          {/* Primary photo preview */}
           {displayPreview ? (
             <div
               onClick={() => fileRef.current?.click()}
               className="border-2 border-dashed border-[#ffb99a] rounded-xl overflow-hidden cursor-pointer"
             >
               <img src={displayPreview} alt="preview" className="w-full object-cover max-h-52" />
-              <p className="text-xs text-center text-gray-400 py-1">tap to change</p>
+              <p className="text-xs text-center text-gray-400 py-1">tap to change main photo</p>
             </div>
           ) : (
-            /* Two-button picker */
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -290,13 +341,61 @@ export default function AddCatForm() {
               </button>
             </div>
           )}
-          {/* Camera input — triggers native camera directly */}
+
+          {/* ── Extra photos strip ── */}
+          {displayPreview && (
+            <div>
+              <p className="text-xs text-gray-400 mb-2">
+                Additional photos <span className="text-gray-300">({totalExtras}/{MAX_EXTRA})</span>
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {/* Persisted additional uploads */}
+                {(draft.additionalUploads ?? []).map((u, i) => (
+                  <div key={`p${i}`} className="relative w-16 h-16 flex-shrink-0">
+                    <img src={u.thumbnail_url} alt="" className="w-full h-full object-cover rounded-lg border border-gray-200" />
+                    <button
+                      onClick={() => removePersistedExtra(i)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-gray-700 text-white rounded-full text-xs flex items-center justify-center leading-none"
+                    >×</button>
+                  </div>
+                ))}
+                {/* Pending new extra photos */}
+                {extraPreviews.map((url, i) => (
+                  <div key={`e${i}`} className="relative w-16 h-16 flex-shrink-0">
+                    <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-[#ffb99a]" />
+                    <button
+                      onClick={() => removeExtraPhoto(i)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-gray-700 text-white rounded-full text-xs flex items-center justify-center leading-none"
+                    >×</button>
+                  </div>
+                ))}
+                {/* Add more button */}
+                {canAddMore && (
+                  <button
+                    onClick={() => extraFileRef.current?.click()}
+                    className="w-16 h-16 border-2 border-dashed border-[#ffb99a] rounded-lg flex flex-col items-center justify-center bg-[#fff8f5] flex-shrink-0 cursor-pointer"
+                  >
+                    <span className="text-[#ff6b35] text-2xl leading-none">+</span>
+                    <span className="text-[9px] text-[#ff6b35] mt-0.5">add</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Hidden inputs */}
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-          {/* Gallery input — opens file picker / photo library */}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          <input ref={extraFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleExtraFiles} />
+
           {error && <p className="text-red-500 text-xs">{error}</p>}
           {checking && (
             <p className="text-xs text-gray-400 animate-pulse text-center">🔍 Checking image safety…</p>
+          )}
+          {loading && (
+            <p className="text-xs text-gray-400 animate-pulse text-center">
+              ⬆️ Uploading {extraPhotos.length > 0 ? `${1 + extraPhotos.length} photos` : 'photo'}…
+            </p>
           )}
           <button
             onClick={handlePhotoNext}
@@ -316,14 +415,12 @@ export default function AddCatForm() {
             Drag the 📍 pin to the exact spot, or use the button below to auto-detect.
           </p>
 
-          {/* Draggable map — always shown, works on HTTP and HTTPS */}
           <LocationPicker
             lat={draft.lat}
             lng={draft.lng}
             onChange={handlePinMove}
           />
 
-          {/* Location label + GPS status */}
           <div className="flex items-center justify-between bg-[#fff8f5] border border-[#ffe0cc] rounded-lg px-3 py-2">
             <span className="text-sm text-gray-700 font-medium truncate pr-2">
               {draft.locationName ?? `${(draft.lat ?? MUMBAI.lat).toFixed(4)}, ${(draft.lng ?? MUMBAI.lng).toFixed(4)}`}
@@ -337,7 +434,7 @@ export default function AddCatForm() {
               >
                 📡 Find me
               </button>
-            ) : null /* gpsStatus === 'done' — pin already centred, no button needed */}
+            ) : null}
           </div>
 
           {gpsStatus === 'unavailable' && (

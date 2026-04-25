@@ -28,6 +28,18 @@ export interface Cat {
   upvote_count: number
   created_at: string
   updated_at: string
+  additional_photos?: CatPhoto[]
+}
+
+export interface CatPhoto {
+  id: string
+  cat_id: string
+  photo_url: string
+  thumbnail_url: string
+  photo_width: number
+  photo_height: number
+  display_order: number
+  created_at: string
 }
 
 export interface Comment {
