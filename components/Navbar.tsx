@@ -32,28 +32,37 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
   }
 
   return (
-    <nav className="bg-[#ff6b35] px-4 py-2.5 flex items-center justify-between sticky top-0 z-50">
-      <Link href="/" className="text-white font-extrabold text-base tracking-tight">
-        🐾 Meows of {city}
-      </Link>
-      <div className="flex items-center gap-3">
-        {catCount != null && (
-          <span className="text-white/80 text-xs hidden sm:block">{catCount} cats spotted</span>
-        )}
-        <Link
-          href="/add"
-          className="bg-white text-[#ff6b35] text-xs font-bold px-3 py-1.5 rounded-full"
-        >
-          + Add a Cat
+    <nav className="bg-[#ff6b35] px-3 py-2 sticky top-0 z-50">
+      <div className="flex items-center justify-between gap-2">
+        {/* Left: brand */}
+        <Link href="/" className="text-white font-extrabold text-sm sm:text-base tracking-tight whitespace-nowrap shrink-0">
+          🐾 Meows of {city}
         </Link>
-        {username ? (
-          <div className="flex items-center gap-2">
-            <Link href="/profile" className="text-white text-xs font-semibold">{username}</Link>
-            <button onClick={handleLogout} className="text-white/70 text-xs">Logout</button>
-          </div>
-        ) : (
-          <Link href="/login" className="text-white text-xs">Login</Link>
-        )}
+
+        {/* Right: actions */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {catCount != null && (
+            <span className="text-white/80 text-[10px] sm:text-xs whitespace-nowrap">
+              🐱 {catCount}
+            </span>
+          )}
+          <Link
+            href="/add"
+            className="bg-white text-[#ff6b35] text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap"
+          >
+            + Add
+          </Link>
+          {username ? (
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link href="/profile" className="text-white text-[10px] sm:text-xs font-semibold max-w-[60px] sm:max-w-none truncate">
+                {username}
+              </Link>
+              <button onClick={handleLogout} className="text-white/70 text-[10px] sm:text-xs whitespace-nowrap">Logout</button>
+            </div>
+          ) : (
+            <Link href="/login" className="text-white text-[10px] sm:text-xs font-semibold whitespace-nowrap">Login</Link>
+          )}
+        </div>
       </div>
     </nav>
   )

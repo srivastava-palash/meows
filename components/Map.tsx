@@ -378,17 +378,21 @@ export default function Map() {
       })
       map.addLayer(cluster)
 
-      // "My Location" button
+      // "My Location" button — extra bottom margin to clear mobile browser nav bars
       const locControl = L.Control.extend({
         onAdd() {
           const btn = L.DomUtil.create('button')
           btn.innerHTML = '📍 My Location'
-          btn.style.cssText = 'background:white;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);margin-bottom:8px;'
+          btn.style.cssText = 'background:white;border:none;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.25);margin-bottom:60px;'
           L.DomEvent.on(btn, 'click', () => {
+            btn.innerHTML = '⏳ Locating…'
             navigator.geolocation.getCurrentPosition(async pos => {
               map.setView([pos.coords.latitude, pos.coords.longitude], 13)
               const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
               setCity(name)
+              btn.innerHTML = '📍 My Location'
+            }, () => {
+              btn.innerHTML = '📍 My Location'
             })
           })
           return btn
@@ -471,7 +475,7 @@ export default function Map() {
   }
 
   return (
-    <div style={{ position: 'relative', height: 'calc(100vh - 44px)', width: '100%' }}>
+    <div style={{ position: 'relative', height: 'calc(100dvh - 40px)', width: '100%' }}>
       <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
 
       {/* ── Location search bar ──────────────────── */}
@@ -681,7 +685,7 @@ export default function Map() {
       {/* ── Map theme picker ──────────────────────────────── */}
       <div style={{
         position: 'absolute',
-        bottom: 36,
+        bottom: 70,
         left: 12,
         zIndex: 1000,
         fontFamily: 'sans-serif',
