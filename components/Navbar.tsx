@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { useCity } from '@/context/CityContext'
 
@@ -110,6 +110,24 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
     router.refresh()
   }
 
+  // ── Brand click: go home + fly to current location ────────────
+  const pathname = usePathname()
+  const [brandLocating, setBrandLocating] = useState(false)
+
+  function handleHomeClick() {
+    if (pathname !== '/') router.push('/')
+    if (!navigator.geolocation) return
+    setBrandLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFlyToCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, zoom: 14 })
+        setBrandLocating(false)
+      },
+      () => setBrandLocating(false),
+      { timeout: 8000 }
+    )
+  }
+
   return (
     <nav ref={searchRef} style={{
       background: '#ff6b35',
@@ -128,15 +146,29 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
         gap: 12,
       }}>
 
-        {/* ── Brand ── */}
-        <Link href="/" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          textDecoration: 'none',
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 20, lineHeight: 1 }}>🐾</span>
+        {/* ── Brand — click to go home + fly to current location ── */}
+        <button
+          onClick={handleHomeClick}
+          title="Go to my location"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            flexShrink: 0,
+            opacity: brandLocating ? 0.7 : 1,
+            transition: 'opacity 0.2s',
+          }}
+        >
+          <span style={{
+            fontSize: 20,
+            lineHeight: 1,
+            display: 'inline-block',
+            animation: brandLocating ? 'pulse 1s infinite' : 'none',
+          }}>🐾</span>
           <span style={{
             color: 'white',
             fontWeight: 800,
@@ -157,7 +189,7 @@ export default function Navbar({ initialUsername = null }: { initialUsername?: s
           }}>
             of {city}
           </span>
-        </Link>
+        </button>
 
         {/* ── Right actions ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
