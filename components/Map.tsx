@@ -109,6 +109,7 @@ export default function Map() {
   const [activeTheme, setActiveTheme] = useState<ThemeId>('soft')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [sort, setSort] = useState<'recent' | 'loved'>('recent')
+  const [locating, setLocating] = useState(false)
   const { setCity } = useCity()
   // Ref so fetchAndRenderPins (memoised with []) can always call latest setCity
   const setCityRef = useRef(setCity)
@@ -382,27 +383,7 @@ export default function Map() {
       })
       map.addLayer(cluster)
 
-      // "My Location" button — extra bottom margin to clear mobile browser nav bars
-      const locControl = L.Control.extend({
-        onAdd() {
-          const btn = L.DomUtil.create('button')
-          btn.innerHTML = '📍 My Location'
-          btn.style.cssText = 'background:white;border:none;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.25);margin-bottom:60px;'
-          L.DomEvent.on(btn, 'click', () => {
-            btn.innerHTML = '⏳ Locating…'
-            navigator.geolocation.getCurrentPosition(async pos => {
-              map.setView([pos.coords.latitude, pos.coords.longitude], 13)
-              const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
-              setCity(name)
-              btn.innerHTML = '📍 My Location'
-            }, () => {
-              btn.innerHTML = '📍 My Location'
-            })
-          })
-          return btn
-        },
-      })
-      new locControl({ position: 'bottomright' }).addTo(map)
+      // Zoom only — My Location rendered as React element to the left of zoom block
 
       mapInstanceRef.current = map
       clusterRef.current = cluster
@@ -476,6 +457,20 @@ export default function Map() {
     localStorage.setItem(THEME_KEY, id)
     setActiveTheme(id)
     setPickerOpen(false)
+  }
+
+  async function handleLocate() {
+    if (locating || !mapInstanceRef.current) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        mapInstanceRef.current!.setView([pos.coords.latitude, pos.coords.longitude], 13)
+        const name = await getCityName(pos.coords.latitude, pos.coords.longitude)
+        setCity(name)
+        setLocating(false)
+      },
+      () => setLocating(false)
+    )
   }
 
   return (
@@ -775,6 +770,34 @@ export default function Map() {
           <span style={{ fontSize: 9, opacity: 0.5 }}>{pickerOpen ? '▼' : '▲'}</span>
         </button>
       </div>
+      {/* ── My Location button — vertically centred next to zoom +/- ─── */}
+      <button
+        onClick={handleLocate}
+        title="Go to my location"
+        style={{
+          position: 'absolute',
+          bottom: 24,          // centers on the 64px zoom block that sits at bottom:10
+          right: 54,           // clears 32px zoom width + 10px Leaflet margin + 8px gap
+          zIndex: 1000,
+          background: 'white',
+          border: 'none',
+          borderRadius: 10,
+          padding: '8px 12px',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: locating ? 'wait' : 'pointer',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+          color: '#333',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          opacity: locating ? 0.7 : 1,
+          transition: 'opacity 0.2s',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {locating ? '⏳' : '📍'} My Location
+      </button>
     </div>
   )
 }
