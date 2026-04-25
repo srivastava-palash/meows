@@ -552,166 +552,164 @@ export default function Map() {
         )}
       </div>
 
-      {/* ── Map theme picker ──────────────────────────────── */}
-      <div style={{
-        position: 'absolute',
-        bottom: 70,
-        left: 12,
-        zIndex: 1000,
-        fontFamily: 'sans-serif',
-      }}>
-        {/* Expanded picker */}
-        {pickerOpen && (
-          <div style={{
-            display: 'flex',
-            gap: 8,
-            marginBottom: 8,
-            background: 'white',
-            borderRadius: 12,
-            padding: '8px 10px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-          }}>
-            {THEMES.map(theme => (
-              <button
-                key={theme.id}
-                onClick={() => applyTheme(theme.id)}
-                title={theme.label}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                  border: activeTheme === theme.id ? '2.5px solid #ff6b35' : '2.5px solid transparent',
-                  borderRadius: 10,
-                  padding: '4px 6px',
-                  background: 'none',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.15s',
-                }}
-              >
-                {/* Preview swatch */}
-                <div style={{
-                  width: 44,
-                  height: 36,
-                  borderRadius: 6,
-                  background: theme.preview,
-                  border: '1px solid rgba(0,0,0,0.1)',
-                  fontSize: 20,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {theme.emoji}
-                </div>
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: activeTheme === theme.id ? 700 : 500,
-                  color: activeTheme === theme.id ? '#ff6b35' : '#555',
-                }}>
-                  {theme.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Toggle button */}
-        <button
-          onClick={() => setPickerOpen(o => !o)}
-          title="Change map style"
-          style={{
-            background: 'white',
-            border: 'none',
-            borderRadius: 8,
-            padding: '6px 12px',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            color: '#333',
-          }}
-        >
-          {THEMES.find(t => t.id === activeTheme)?.emoji ?? '🗺️'}
-          {' '}
-          {THEMES.find(t => t.id === activeTheme)?.label ?? 'Map style'}
-          {' '}
-          <span style={{ fontSize: 9, opacity: 0.5 }}>{pickerOpen ? '▼' : '▲'}</span>
-        </button>
-      </div>
-      {/* ── Bottom-right controls: My Location + Zoom ───────────────── */}
+      {/* ── Bottom bar: theme picker (left) + My Location + Zoom (right) ── */}
       <div style={{
         position: 'absolute',
         bottom: '1rem',
+        left: '0.75rem',
         right: '0.75rem',
         zIndex: 1000,
         display: 'flex',
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: '0.5rem',
+        justifyContent: 'space-between',
+        pointerEvents: 'none', // let map clicks pass through the empty middle
       }}>
-        {/* My Location */}
-        <button
-          onClick={handleLocate}
-          title="Go to my location"
-          style={{
-            background: 'white',
-            border: 'none',
-            borderRadius: 10,
-            padding: '0.5rem 0.75rem',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: locating ? 'wait' : 'pointer',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
-            color: '#333',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            opacity: locating ? 0.7 : 1,
-            transition: 'opacity 0.2s',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {locating ? '⏳' : '📍'} My Location
-        </button>
 
-        {/* Zoom +/- — hidden on touch devices via CSS (pointer: coarse) */}
-        <div className="zoom-controls" style={{
+        {/* ── Theme picker (left) ── */}
+        <div style={{ pointerEvents: 'auto', fontFamily: 'sans-serif' }}>
+          {/* Expanded theme grid — opens upward */}
+          {pickerOpen && (
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              marginBottom: 8,
+              background: 'white',
+              borderRadius: 12,
+              padding: '8px 10px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+            }}>
+              {THEMES.map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => applyTheme(theme.id)}
+                  title={theme.label}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4,
+                    border: activeTheme === theme.id ? '2.5px solid #ff6b35' : '2.5px solid transparent',
+                    borderRadius: 10,
+                    padding: '4px 6px',
+                    background: 'none',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s',
+                  }}
+                >
+                  <div style={{
+                    width: 44, height: 36, borderRadius: 6,
+                    background: theme.preview, border: '1px solid rgba(0,0,0,0.1)',
+                    fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {theme.emoji}
+                  </div>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: activeTheme === theme.id ? 700 : 500,
+                    color: activeTheme === theme.id ? '#ff6b35' : '#555',
+                  }}>
+                    {theme.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Theme toggle button */}
+          <button
+            onClick={() => setPickerOpen(o => !o)}
+            title="Change map style"
+            style={{
+              background: 'white',
+              border: 'none',
+              borderRadius: 8,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              color: '#333',
+            }}
+          >
+            {THEMES.find(t => t.id === activeTheme)?.emoji ?? '🗺️'}
+            {' '}
+            {THEMES.find(t => t.id === activeTheme)?.label ?? 'Map style'}
+            {' '}
+            <span style={{ fontSize: 9, opacity: 0.5 }}>{pickerOpen ? '▼' : '▲'}</span>
+          </button>
+        </div>
+
+        {/* ── My Location + Zoom (right) ── */}
+        <div style={{
+          pointerEvents: 'auto',
           display: 'flex',
-          flexDirection: 'column',
-          borderRadius: 10,
-          overflow: 'hidden',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: '0.5rem',
         }}>
-          {['+', '−'].map((sym, i) => (
-            <button
-              key={sym}
-              onClick={() => {
-                const map = mapInstanceRef.current
-                if (!map) return
-                if (sym === '+') map.zoomIn(); else map.zoomOut()
-              }}
-              style={{
-                width: '2.2rem',
-                height: '2.2rem',
-                background: 'white',
-                border: 'none',
-                borderTop: i === 1 ? '1px solid #e5e7eb' : 'none',
-                fontSize: 18,
-                fontWeight: 400,
-                cursor: 'pointer',
-                color: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-              }}
-            >
-              {sym}
-            </button>
-          ))}
+          <button
+            onClick={handleLocate}
+            title="Go to my location"
+            style={{
+              background: 'white',
+              border: 'none',
+              borderRadius: 10,
+              padding: '0.5rem 0.75rem',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: locating ? 'wait' : 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+              color: '#333',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              opacity: locating ? 0.7 : 1,
+              transition: 'opacity 0.2s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {locating ? '⏳' : '📍'} My Location
+          </button>
+
+          {/* Zoom — hidden on touch devices via CSS */}
+          <div className="zoom-controls" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 10,
+            overflow: 'hidden',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+          }}>
+            {['+', '−'].map((sym, i) => (
+              <button
+                key={sym}
+                onClick={() => {
+                  const map = mapInstanceRef.current
+                  if (!map) return
+                  if (sym === '+') map.zoomIn(); else map.zoomOut()
+                }}
+                style={{
+                  width: '2.2rem',
+                  height: '2.2rem',
+                  background: 'white',
+                  border: 'none',
+                  borderTop: i === 1 ? '1px solid #e5e7eb' : 'none',
+                  fontSize: 18,
+                  fontWeight: 400,
+                  cursor: 'pointer',
+                  color: '#333',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1,
+                }}
+              >
+                {sym}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
