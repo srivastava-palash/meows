@@ -38,8 +38,12 @@ function loadDraft(fallbackCenter: { lat: number; lng: number }): PersistedState
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedState
+      // Photos are uploaded at final submit — File objects don't survive a refresh.
+      // If the user is at Step 2/3 without a committed upload, send them back to Step 1.
+      const step: Step = parsed.step > 1 && !parsed.upload ? 1 : parsed.step
       return {
         ...parsed,
+        step,
         lat: parsed.lat ?? fallbackCenter.lat,
         lng: parsed.lng ?? fallbackCenter.lng,
         additionalUploads: parsed.additionalUploads ?? [],
@@ -263,53 +267,44 @@ export default function AddCatForm() {
 
   async function handlePhotoNext() {
     if (!photo && !draft.upload) { setError('Please select a photo'); return }
-    setLoading(true)
     setError(null)
-
-    // Upload primary if new file selected
-    let primaryUpload = draft.upload
-    if (photo) {
-      const result = await uploadFile(photo)
-      if (!result) { setLoading(false); setError('Upload failed. Try again.'); return }
-      primaryUpload = result
-      setDraft(prev => ({ ...prev, upload: result }))
-    }
-
-    // Upload any pending extra photos
-    if (extraPhotos.length > 0) {
-      const results: UploadResult[] = []
-      for (const file of extraPhotos) {
-        const result = await uploadFile(file)
-        if (result) results.push(result)
-      }
-      setDraft(prev => ({
-        ...prev,
-        additionalUploads: [...(prev.additionalUploads ?? []), ...results],
-      }))
-      setExtraPhotos([])
-      setExtraPreviews(prev => { prev.forEach(u => URL.revokeObjectURL(u)); return [] })
-    }
-
-    setLoading(false)
-    if (primaryUpload) enterStep2()
+    enterStep2()
   }
 
   async function handleSubmit() {
-    if (!draft.upload) { setError('Photo upload missing'); return }
+    if (!photo && !draft.upload) { setError('Please select a photo first'); return }
     setLoading(true)
     setError(null)
+
+    // Upload primary photo now (deferred from Step 1)
+    let primaryUpload = draft.upload
+    if (photo) {
+      const result = await uploadFile(photo)
+      if (!result) { setLoading(false); setError('Photo upload failed. Try again.'); return }
+      primaryUpload = result
+    }
+
+    // Upload any pending extra photos
+    const additionalUploads: UploadResult[] = [...(draft.additionalUploads ?? [])]
+    for (const file of extraPhotos) {
+      const result = await uploadFile(file)
+      if (result) additionalUploads.push(result)
+    }
+
+    if (!primaryUpload) { setLoading(false); setError('Photo upload missing'); return }
+
     const res = await fetch('/api/cats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...draft.upload,
+        ...primaryUpload,
         lat: draft.lat,
         lng: draft.lng,
         location_name: draft.locationName,
         name: draft.name || null,
         story: draft.story || null,
         last_seen_at: null,
-        additional_photos: draft.additionalUploads ?? [],
+        additional_photos: additionalUploads,
       }),
     })
     setLoading(false)
@@ -421,17 +416,12 @@ export default function AddCatForm() {
           {checking && (
             <p className="text-xs text-gray-400 animate-pulse text-center">🔍 Checking image safety…</p>
           )}
-          {loading && (
-            <p className="text-xs text-gray-400 animate-pulse text-center">
-              ⬆️ Uploading {extraPhotos.length > 0 ? `${1 + extraPhotos.length} photos` : 'photo'}…
-            </p>
-          )}
           <button
             onClick={handlePhotoNext}
-            disabled={loading || checking || (!photo && !draft.upload)}
+            disabled={checking || (!photo && !draft.upload)}
             className="w-full bg-[#ff6b35] text-white font-bold py-3 rounded-xl disabled:opacity-50"
           >
-            {loading ? 'Uploading…' : checking ? 'Checking…' : 'Next →'}
+            {checking ? 'Checking…' : 'Next →'}
           </button>
         </div>
       )}
@@ -558,7 +548,7 @@ export default function AddCatForm() {
             disabled={loading}
             className="w-full bg-[#ff6b35] text-white font-bold py-3 rounded-xl disabled:opacity-50"
           >
-            {loading ? 'Adding…' : '🐾 Add this cat!'}
+            {loading ? 'Uploading & saving…' : '🐾 Add this cat!'}
           </button>
           <button onClick={() => goTo(2)} className="w-full text-gray-400 text-sm py-2">
             ← Back
