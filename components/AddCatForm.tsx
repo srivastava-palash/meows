@@ -148,6 +148,19 @@ export default function AddCatForm() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // run once on mount — mapCenter at mount time is the seed
 
+  // Debounced address autocomplete — fires 400ms after typing stops (min 3 chars)
+  useEffect(() => {
+    const q = addressQuery.trim()
+    if (q.length < 3) { setAddressResults([]); return }
+    setAddressSearching(true)
+    const timer = setTimeout(async () => {
+      const results = await forwardGeocode(q)
+      setAddressResults(results)
+      setAddressSearching(false)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [addressQuery])
+
   function setDraft(updater: (prev: PersistedState) => PersistedState) {
     setDraftRaw(prev => {
       const next = updater(prev)
@@ -438,33 +451,12 @@ export default function AddCatForm() {
                 type="text"
                 value={addressQuery}
                 onChange={e => setAddressQuery(e.target.value)}
-                onKeyDown={async e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    if (!addressQuery.trim()) return
-                    setAddressSearching(true)
-                    const results = await forwardGeocode(addressQuery.trim())
-                    setAddressResults(results)
-                    setAddressSearching(false)
-                  }
-                }}
                 placeholder="Search address or place…"
                 className="flex-1 border border-[#ffe0cc] rounded-lg px-3 py-2 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
               />
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!addressQuery.trim()) return
-                  setAddressSearching(true)
-                  const results = await forwardGeocode(addressQuery.trim())
-                  setAddressResults(results)
-                  setAddressSearching(false)
-                }}
-                disabled={addressSearching || !addressQuery.trim()}
-                className="bg-[#ff6b35] text-white text-sm font-semibold px-3 py-2 rounded-lg disabled:opacity-50 shrink-0"
-              >
-                {addressSearching ? '…' : '🔍'}
-              </button>
+              <div className="bg-[#ff6b35] text-white text-sm font-semibold px-3 py-2 rounded-lg flex items-center justify-center shrink-0 min-w-[44px]">
+                {addressSearching ? <span className="animate-spin inline-block">⏳</span> : '🔍'}
+              </div>
             </div>
 
             {/* Results dropdown */}
