@@ -69,6 +69,15 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   } catch { return null }
 }
 
+async function forwardGeocode(query: string): Promise<{ display_name: string; lat: string; lon: string }[]> {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`
+    )
+    return await r.json()
+  } catch { return [] }
+}
+
 // ── NSFW guard ───────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let nsfwModel: any = null
@@ -122,6 +131,9 @@ export default function AddCatForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [addressQuery, setAddressQuery] = useState('')
+  const [addressResults, setAddressResults] = useState<{ display_name: string; lat: string; lon: string }[]>([])
+  const [addressSearching, setAddressSearching] = useState(false)
 
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -416,8 +428,68 @@ export default function AddCatForm() {
         <div className="space-y-3">
           <h2 className="text-lg font-extrabold text-gray-900">Where was this cat?</h2>
           <p className="text-xs text-gray-400">
-            Drag the 📍 pin to the exact spot, or use the button below to auto-detect.
+            Search an address, drag the 📍 pin, or use GPS to auto-detect your location.
           </p>
+
+          {/* ── Address search ── */}
+          <div className="relative">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={addressQuery}
+                onChange={e => setAddressQuery(e.target.value)}
+                onKeyDown={async e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (!addressQuery.trim()) return
+                    setAddressSearching(true)
+                    const results = await forwardGeocode(addressQuery.trim())
+                    setAddressResults(results)
+                    setAddressSearching(false)
+                  }
+                }}
+                placeholder="Search address or place…"
+                className="flex-1 border border-[#ffe0cc] rounded-lg px-3 py-2 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!addressQuery.trim()) return
+                  setAddressSearching(true)
+                  const results = await forwardGeocode(addressQuery.trim())
+                  setAddressResults(results)
+                  setAddressSearching(false)
+                }}
+                disabled={addressSearching || !addressQuery.trim()}
+                className="bg-[#ff6b35] text-white text-sm font-semibold px-3 py-2 rounded-lg disabled:opacity-50 shrink-0"
+              >
+                {addressSearching ? '…' : '🔍'}
+              </button>
+            </div>
+
+            {/* Results dropdown */}
+            {addressResults.length > 0 && (
+              <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-[#ffe0cc] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {addressResults.map((r, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const lat = parseFloat(r.lat)
+                        const lng = parseFloat(r.lon)
+                        await handlePinMove(lat, lng)
+                        setAddressQuery(r.display_name)
+                        setAddressResults([])
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-[#fff8f5] border-b border-gray-100 last:border-0"
+                    >
+                      {r.display_name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <LocationPicker
             lat={draft.lat}
@@ -446,8 +518,8 @@ export default function AddCatForm() {
               <span>⚠️</span>
               <span>
                 {isSecure
-                  ? 'GPS denied — drag the pin to the right spot, or tap Find me to retry.'
-                  : 'GPS needs HTTPS to auto-detect. Drag the pin to the spot — works perfectly!'}
+                  ? 'GPS denied — drag the pin or search an address above.'
+                  : 'GPS needs HTTPS to auto-detect. Search an address or drag the pin — works perfectly!'}
               </span>
             </p>
           )}
