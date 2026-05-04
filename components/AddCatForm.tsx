@@ -432,7 +432,7 @@ export default function AddCatForm() {
           </p>
 
           {/* ── Address search ── */}
-          <div className="relative">
+          <div className="relative" style={{ zIndex: 1000 }}>
             <div className="flex gap-2">
               <input
                 type="text"
