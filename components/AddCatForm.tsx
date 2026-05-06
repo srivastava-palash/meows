@@ -442,7 +442,7 @@ export default function AddCatForm() {
                 value={addressQuery}
                 onChange={e => setAddressQuery(e.target.value)}
                 placeholder="Search address or place…"
-                className="flex-1 border border-[#ffe0cc] rounded-lg px-3 py-2 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
+                className="flex-1 border border-[#ffe0cc] rounded-lg px-3 py-2 text-sm text-gray-900 bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
               />
               <div className="bg-[#ff6b35] text-white text-sm font-semibold px-3 py-2 rounded-lg flex items-center justify-center shrink-0 min-w-[44px]">
                 {addressSearching ? <span className="animate-spin inline-block">⏳</span> : '🔍'}
@@ -530,7 +530,7 @@ export default function AddCatForm() {
               value={draft.name}
               onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
               placeholder="e.g. Biscuit, Tiger, Mango…"
-              className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
+              className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-[#fffaf8] focus:outline-none focus:border-[#ff6b35]"
             />
           </div>
           <div>
@@ -539,7 +539,7 @@ export default function AddCatForm() {
               value={draft.story}
               onChange={e => setDraft(prev => ({ ...prev, story: e.target.value }))}
               placeholder="What's special about this cat?"
-              className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm bg-[#fffaf8] h-28 resize-none focus:outline-none focus:border-[#ff6b35]"
+              className="w-full border border-[#ffe0cc] rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-[#fffaf8] h-28 resize-none focus:outline-none focus:border-[#ff6b35]"
             />
           </div>
           {error && <p className="text-red-500 text-xs">{error}</p>}
